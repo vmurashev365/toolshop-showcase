@@ -1,0 +1,140 @@
+name: Toolshop QA Risk Gates
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    # Weekly: regression gates against the live sandbox (drift) + known-discrepancy watch
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: toolshop-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-gates:
+    name: Static · Typecheck & Discovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run bdd:dry
+      - run: npm run pw:list
+
+  api-margin-security:
+    name: Gate · Margin & Security (API)
+    needs: static-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:api
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: report-api-margin-security
+          path: reports/pw-api/
+          if-no-files-found: ignore
+
+  bdd-business-specs:
+    name: Gate · Executable Business Specs (BDD)
+    needs: static-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:bdd
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: report-bdd
+          path: reports/bdd/
+          if-no-files-found: ignore
+
+  mobile-money-path:
+    name: Gate · Mobile WebKit/Chromium Money Path
+    needs: static-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:mobile
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: report-mobile
+          path: reports/pw-mobile/
+          if-no-files-found: ignore
+
+  ux-guards:
+    name: Gate · A11y, Localization & Fault Controls
+    needs: static-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ux
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: report-ux
+          path: reports/pw-ux/
+          if-no-files-found: ignore
+
+  # Inverted checks: green while tracked live findings still reproduce; red when fixed
+  # (promote to regression gate) or when a precondition breaks.
+  known-discrepancies:
+    name: Watch · Known Spec Discrepancies (live API findings)
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    needs: static-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: API findings (FIND-01, FIND-02)
+        run: npm run test:discrepancies:api
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: report-known-discrepancies
+          path: reports/pw-discrepancies/
+          if-no-files-found: ignore

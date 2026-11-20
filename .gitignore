@@ -1,0 +1,14 @@
+node_modules/
+reports/
+playwright-report/
+test-results/
+blob-report/
+screenshots/
+videos/
+har/
+tmp/
+.env
+.env.local
+*.log
+.DS_Store
+Thumbs.db
