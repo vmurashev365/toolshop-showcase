@@ -1,0 +1,50 @@
+{
+  "capturedAt": "2026-11-20T15:38:45.993Z",
+  "endpoint": "https://api.practicesoftwaretesting.com/docs",
+  "httpStatus": 200,
+  "note": "Non-destructive OpenAPI audit only. No mutating PUT/PATCH request was sent to the shared public sandbox.",
+  "paths": {
+    "/products/{productId}": {
+      "put": {
+        "operationId": "updateProduct",
+        "summary": "Update specific product",
+        "security": null,
+        "responseCodes": [
+          "200",
+          "404",
+          "405",
+          "422"
+        ]
+      },
+      "patch": {
+        "operationId": "patchProduct",
+        "summary": "Partially update specific product",
+        "security": null,
+        "responseCodes": [
+          "200",
+          "404",
+          "405",
+          "422"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteProduct",
+        "summary": "Delete specific product",
+        "description": "Admin role is required to delete a specific product",
+        "security": [
+          {
+            "apiAuth": []
+          }
+        ],
+        "responseCodes": [
+          "204",
+          "401",
+          "404",
+          "405",
+          "409",
+          "422"
+        ]
+      }
+    }
+  }
+}

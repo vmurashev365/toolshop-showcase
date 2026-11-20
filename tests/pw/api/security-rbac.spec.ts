@@ -60,7 +60,7 @@ test.describe('Security, RBAC & Payment Validation (API) @blocker-security', () 
     await expectKnownDiscrepancy('FIND-01', () => {
       expect(
         putProduct?.security,
-        'PUT /products/{productId} must declare an OpenAPI security scheme (live probe confirmed customer price mutation).',
+        'PUT /products/{productId} must declare an OpenAPI security scheme (DELETE requires apiAuth; upstream ProductController::update has no auth middleware).',
       ).toBeTruthy();
     });
   });

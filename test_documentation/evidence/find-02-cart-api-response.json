@@ -1,0 +1,35 @@
+{
+  "capturedAt": "2026-11-20T15:38:45.993Z",
+  "product": {
+    "id": "01M7WQJ1ZMSJYQV2WZEJB8A2B2",
+    "name": "Long Nose Pliers",
+    "price": 14.24,
+    "in_stock": false,
+    "is_rental": false
+  },
+  "addRequest": {
+    "method": "POST",
+    "path": "/carts/{cartId}",
+    "body": {
+      "product_id": "01M7WQJ1ZMSJYQV2WZEJB8A2B2",
+      "quantity": 1
+    }
+  },
+  "addResponse": {
+    "status": 200,
+    "body": {
+      "result": "item added or updated"
+    }
+  },
+  "cartAfterAdd": {
+    "status": 200,
+    "itemCount": 1,
+    "firstItem": {
+      "product_id": "01M7WQJ1ZMSJYQV2WZEJB8A2B2",
+      "quantity": 1,
+      "product_name": "Long Nose Pliers",
+      "product_in_stock": false,
+      "product_price": 14.24
+    }
+  }
+}

@@ -1,114 +1,103 @@
-# Toolshop E-Commerce · Risk-Based QA & Hybrid Automation Framework (Showcase)
+# Toolshop · Risk-based QA and hybrid test automation
 
-[![Toolshop QA Risk Gates](https://github.com/vmurashev365/toolshop-showcase/actions/workflows/qa.yml/badge.svg)](https://github.com/vmurashev365/toolshop-showcase/actions/workflows/qa.yml)
+[![Toolshop QA Risk Gates](https://github.com/vmurashev365/toolshop-showcase/actions/workflows/qa.yml/badge.svg?branch=main)](https://github.com/vmurashev365/toolshop-showcase/actions/workflows/qa.yml)
+[![Latest test report](https://img.shields.io/badge/report-latest%20run-0b5cad)](https://vmurashev365.github.io/toolshop-showcase/)
 
-Production-grade QA architecture for [Practice Software Testing (Toolshop)](https://practicesoftwaretesting.com/), built to industry e-commerce and ISTQB v4.0 / ISO 29119 / ISO 25010 standards.
+Risk-based QA suite for [Practice Software Testing (Toolshop)](https://practicesoftwaretesting.com/), an open-source demo e-commerce store built for practising software testing. Testing starts from commercial and technical risks — pricing integrity, discount math, stock checks, API access control, mobile checkout, accessibility, and payment failure recovery — and puts each check at the layer that fits best inside one TypeScript codebase.
 
-Instead of automating UI clicks blindly, testing starts from **commercial risk & margin protection** (pricing integrity, discount recalculation, inventory guards, RBAC/BOLA, and buyer conversion) and chooses the right execution layer per risk class inside a single TypeScript codebase.
+## What this project shows
 
-> **Scope of this public showcase:** This repository contains the core automation architecture, all Playwright technical & UX guardrails (API security/margin, mobile WebKit/Chromium, WCAG 2.1 AA ratchet, DE localization, network fault injection), and a representative subset of executable Gherkin specifications.  
-> The full **24-vector E-Commerce Margin-Leak Research Methodology** (Layer 1 Evidence Archive, Layer 2 Decision Digest, complete Risk Matrix, Decision Tables, Exploratory Charters, and the full 37-scenario BDD Release Gate) is shared privately during client walkthroughs and audits.
+- **Right test layer per risk.** Pricing tampering, rounding, stock rules, and BOLA/RBAC run directly against the HTTP API. Mobile WebKit/Chromium, WCAG 2.1 AA, `DE` localization, and network fault controls run in `@playwright/test`. Business discount and checkout continuity rules run as Gherkin specs in Cucumber.
+- **Documented findings with evidence.** Five areas where Toolshop has pricing, stock, access-control, mobile UX, or accessibility issues are backed by QA notes, screenshots or captured API responses, and automated checks in this repo.
+- **Proof that assertions catch defects.** `page.route()` injects a tampered `$0.01` cart price (`TC-RES-001`) and a `500` payment gateway outage (`TC-RES-002`) to verify both the financial error diagnostic (`expected $14.15, actual $0.01`) and buyer recovery (no invoice created, cart kept, retry enabled).
+- **Self-tightening discrepancy watches and a11y ratchet.** Known API findings (`FIND-01`, `FIND-02`, `FIND-03`) use `expectKnownDiscrepancy()` so they stay green while reproducing and turn red if upstream fixes them. The WCAG 2.1 AA check blocks any new `critical`/`serious` violation and fails if a baselined `FIND-08` issue disappears.
+- **CI with a one-click public report.** GitHub Actions runs API gates against the live sandbox and browser gates against an ephemeral Sprint 5 Docker stack (avoiding Cloudflare bot challenges and hourly DB resets). The [latest test report](https://vmurashev365.github.io/toolshop-showcase/) publishes automatically to GitHub Pages.
 
----
+## Findings
 
-## Selected Live Findings Uncovered on `practicesoftwaretesting.com`
+Toolshop (`testsmith-io/practice-software-testing`) is an open-source training app, so some behaviors may be unhardened or intentional for practice. Before logging each item below, we checked upstream GitHub issues and Sprint 5 source code, and ran strictly non-destructive checks against the shared public sandbox (no `PUT /products` calls were sent to `api.practicesoftwaretesting.com`).
 
-Even on a widely tested public e-commerce demo, a commercial-risk approach surfaced real margin, integrity, and conversion defects that standard happy-path E2E suites miss:
+| ID | Area | Observed behavior | Automated check | Evidence |
+| --- | --- | --- | --- | --- |
+| **FIND-01** | Product update RBAC (`PUT /products/{id}`) | Live OpenAPI `/docs` declares no `security` scheme on `PUT`/`PATCH /products/{id}` (unlike `DELETE`, which requires `apiAuth` + `role:admin`). Upstream `ProductController::update` has no auth middleware and `UpdateProduct::authorize()` returns `true`. | `TC-SEC-003` (non-destructive OpenAPI watch) | [QA note](test_documentation/findings/FIND-01-product-update-rbac.md) · [OpenAPI JSON](test_documentation/evidence/find-01-openapi-products.json) |
+| **FIND-02** | Out-of-stock API bypass | UI shows `Out of stock` and disables `Add to cart` for `in_stock: false` SKUs, but `POST /carts/{id}` accepts them (`200 OK`) because `CartService` never checks `in_stock`. | `TC-API-004` (inverted watch) | [QA note](test_documentation/findings/FIND-02-out-of-stock-bypass.md) · [Screenshot](test_documentation/evidence/find-02-out-of-stock-ui.png) · [API JSON](test_documentation/evidence/find-02-cart-api-response.json) |
+| **FIND-03** | Discount stacking & `is_location_offer` bug | `CartService` uses PHP `isset($product->is_location_offer)` (true even for `false`), applying up to `25%` geo-discount to non-offer SKUs and compounding it with the `15%` retail+rental discount (`36.25%` off). | `TC-API-005` (inverted watch) | [QA note](test_documentation/findings/FIND-03-discount-stacking.md) · [Screenshot](test_documentation/evidence/find-03-discount-stacking-ui.png) · [API JSON](test_documentation/evidence/find-03-discount-stacking.json) |
+| **FIND-04..06** | Mobile checkout friction (`390×844`) | Cart badge is hidden inside the collapsed hamburger menu; `Add to cart` sits below the fold (`y = 1120px`); the floating feed widget overlaps the first product title; `data-test="filters"` is duplicated in the DOM. | `TC-MOB-001`, `HeaderNav`, `CatalogFilters` | [QA note](test_documentation/findings/FIND-04-06-mobile-ux.md) · [Collapsed](test_documentation/evidence/find-04-mobile-header-collapsed.png) · [Expanded](test_documentation/evidence/find-04-mobile-header-expanded.png) · [JSON](test_documentation/evidence/find-04-06-mobile-observations.json) |
+| **FIND-07..08** | Accessibility & `DE` locale | Axe WCAG 2.1 AA reports 2 `serious` violations (`label-content-name-mismatch`, `list`) on funnel pages; `DE` locale translates chrome (`Einloggen`, `Sortieren`) while keeping USD `$` prices. | `TC-A11Y-001` (ratchet), `TC-I18N-001` | [QA note](test_documentation/findings/FIND-07-08-a11y-i18n.md) · [DE screenshot](test_documentation/evidence/find-07-de-locale-usd.png) · [Axe JSON](test_documentation/evidence/find-08-axe-wcag-violations.json) |
 
-| Area | Impact | Observed Live Behaviour (2026-11-20) | Automated Control |
-| :--- | :--- | :--- | :--- |
-| **Catalog RBAC (`FIND-01`)** | **Critical · Margin / Fraud** | `PUT /products/{productId}` declares no OpenAPI `security` scheme and permitted a regular customer to modify catalog prices. *(Non-destructive OpenAPI audit on live.)* | `TC-SEC-003` (inverted watch) |
-| **Out-of-Stock Bypass (`FIND-02`)** | **High · Margin / Overselling** | Out-of-stock retail SKU (`in_stock: false`) is blocked in the UI, yet Cart and Invoice APIs accept it end-to-end. | `TC-API-004` (inverted watch) |
-| **Discount Stacking & Exclusion (`FIND-03`)** | **High · Margin Leak** | Multi-tier geolocation discounts apply even to `is_location_offer: false` SKUs and compound with the `15%` retail+rental combination discount (up to `36.25%` effective reduction). | Covered in full private BDD gate |
-| **Quantity Cap & Order Idempotency** | **High · Margin / Ops** | Repeated additive `POST /carts/{id}` calls bypass the `99`-unit and `10h` rental limits; `POST /invoices` accepts empty carts (`$0.00`) and allows replaying the same `cart_id` into duplicate invoices. | Covered in full private BDD gate |
-| **Invoice Status Escalation & Rounding** | **High · Security / Reconciliation** | Standard customers can update their own invoice status via `PUT /invoices/{id}/status`; discounted `POST /invoices` responses emit unrounded IEEE-754 floats. | Covered in full private BDD gate |
-| **Mobile Conversion Friction (`FIND-04`, `05`, `06`)** | **Medium · Buyer UX** | At `390×844`, the cart badge is hidden inside the hamburger menu, `Add to cart` sits below the fold (`y = 1384px`), a floating widget overlaps filters, and `data-test="filters"` is duplicated in DOM. | `TC-MOB-001`, POM guardrails |
-| **Accessibility & i18n (`FIND-07`, `FIND-08`)** | **Medium · Compliance / UX** | WCAG 2.1 AA scan catches `serious` violations (`label-content-name-mismatch`, `list`); `DE` locale retains USD formatting (`$`) and wraps the promo CTA. | `TC-A11Y-001` (ratchet), `TC-I18N-001` |
+Test strategy and release gate criteria: [test_documentation/01-test-strategy.md](test_documentation/01-test-strategy.md)
 
-Strategy & gate criteria: [test_documentation/01-test-strategy.md](test_documentation/01-test-strategy.md)
+## Coverage
 
----
+| Suite | Checks | Runner / Target | What is checked |
+| --- | ---: | --- | --- |
+| [`tests/pw/api/`](tests/pw/api/) (`api-margin-security`) | 6 | Playwright · live API | Invalid quantities (`0`, negative, fractional), client price/discount tampering ignored, 20% geo-discount half-up rounding in cents, cross-user BOLA/IDOR, unauthenticated invoice `401`, `/payment/check` validation |
+| [`tests/pw/api/`](tests/pw/api/) (`known-discrepancies-api`) | 3 | Playwright · live API | Inverted watches for `FIND-01`, `FIND-02`, and `FIND-03` |
+| [`tests/bdd/features/`](tests/bdd/features/) | 3 | Cucumber + Playwright · Docker SUT | 15% retail+rental combination discount (API & UI), discount revocation on removal and page reload, guest cart reconciliation and sign-in continuity |
+| [`tests/pw/mobile/`](tests/pw/mobile/) | 2 | Playwright · iPhone 14 WebKit & Pixel 7 Chromium · Docker SUT | Browse, product price match, add to cart, hamburger cart badge, cart total reconciliation, viewport image check, zero horizontal overflow |
+| [`tests/pw/ux/`](tests/pw/ux/) | 4 | Playwright · Chromium · Docker SUT | WCAG 2.1 AA ratchet (`@axe-core/playwright`), `DE` localization & layout, `page.route()` tampered `$0.01` price control, `page.route()` payment `500` recovery |
+| **Total** | **18** | | All executable in this repo and published in CI |
 
-## Hybrid Automation Architecture
+## Architecture & tech stack
+
+Playwright 1.65 · TypeScript 7 · Cucumber 13 (Gherkin) · `@axe-core/playwright` · Node.js 24 · GitHub Actions · GitHub Pages
 
 ```text
 src/
-  api/          Typed APIRequestContext clients (Auth, Products, Cart, Invoices) — dynamic catalog discovery & re-seed guard
-  domain/       Exact integer-cent math (half-up rounding) & self-explanatory domain assertions (pure + web-first)
+  api/          Typed APIRequestContext clients (Auth, Products, Cart, Invoices) + DB re-seed guard
+  domain/       Integer-cent money math (half-up rounding) & web-first financial assertions
   components/   HeaderNav (mobile hamburger aware), CatalogFilters (FIND-06 scoped)
-  pages/        BasePage (overflow & lazy/AVIF-aware image guards), Catalog, ProductDetails, Auth, CheckoutWizard
-  utils/        page.route() network fault injection (tampered cart price, payment gateway 5xx)
+  pages/        BasePage (overflow & lazy/AVIF-aware image checks), Catalog, ProductDetails, Auth, CheckoutWizard
+  utils/        page.route() network fault injection (tampered cart price, payment 500)
 
 tests/
-  pw/           @playwright/test — API margin/tampering, RBAC/BOLA, Mobile WebKit/Chromium, WCAG 2.1 AA ratchet, DE i18n, Fault Controls
-  bdd/          Cucumber 13 (Gherkin) — Representative executable business specs (combination discount + reverse recalculation, guest checkout continuity)
-    features/           Declarative business rules in shared shopper vocabulary
-    step-definitions/   basket · storefront
-    hooks/              World (scenario state via need(), UI via ui()), step-grouped Playwright traces & failure artifacts
+  pw/           @playwright/test suites (API, known discrepancies, mobile WebKit/Chromium, UX guards)
+  bdd/          Cucumber 13 features, step definitions, World, hooks, and compact terminal formatter
 
-scripts/
-  clean-report-dir.js   Safe project-scoped report cleanup before each BDD run
+test_documentation/
+  01-test-strategy.md   Scope, layer split, data isolation, and release gates
+  findings/             QA notes for FIND-01 through FIND-08
+  evidence/             Screenshots and captured API/DOM/axe JSON observations
 ```
 
-### Key Engineering Highlights
+## Run it locally
 
-- **Exact Integer-Cent Money Math ([src/domain/money.ts](src/domain/money.ts)):** Avoids IEEE-754 drift with strict whole-percent half-up rounding in integer cents.
-- **Web-First Domain Assertions ([src/domain/assertions.ts](src/domain/assertions.ts)):** Auto-retrying UI checks (`expectUsdText`, `expectCartTotal`, `expectLineItem`, `expectCartBadgeCount`) handle Angular's async recalculation while emitting clear financial diagnostics (`expected $38.73, actual $0.01`).
-- **Proof That Assertions Actually Catch Defects ([tests/pw/ux/fault-injection.spec.ts](tests/pw/ux/fault-injection.spec.ts)):** Uses `page.route()` to inject a tampered `$0.01` cart price (`TC-RES-001`) and a `500` payment gateway outage (`TC-RES-002`), proving both the financial guardrail and graceful buyer recovery.
-- **Inverted Discrepancy Watch ([expectKnownDiscrepancy](tests/pw/fixtures.ts)):** Known live defects (`FIND-01`, `FIND-02`) stay green while reproducing and turn red the moment a fix lands (prompting promotion to the blocking gate) — without masking broken preconditions or runtime exceptions.
-- **WCAG 2.1 AA Ratchet ([tests/pw/ux/a11y-checkout.spec.ts](tests/pw/ux/a11y-checkout.spec.ts)):** Blocks every **new** `critical` or `serious` violation across Catalog, Product Detail, and Checkout Cart, and fails if a baselined `FIND-08` item is fixed so the baseline tightens automatically.
-- **Shared-Sandbox Resilience:** Dynamically discovers product IDs per test, caps worker load, detects mid-run DB re-seeding (`assertCatalogProductStillKnown`), and handles Playwright WebKit-on-Windows AVIF limitations transparently.
-
----
-
-## Quick Start
+Requires Node.js 22+ (CI runs Node.js 24) and npm.
 
 ```sh
-npm install
+npm ci
 npx playwright install chromium webkit
 
 npm run typecheck               # Strict TypeScript check
 npm run bdd:dry                 # Verify 100% Gherkin step resolution
 npm run pw:list                 # List all Playwright projects and specs
 
-npm run test:api                # Fast API margin, pricing & security gates (no browser)
-npm run test:bdd                # Representative executable business specs (Cucumber + Playwright)
+npm run test:api                # 6 API margin & security checks (no browser)
+npm run test:discrepancies:api  # 3 inverted watches for FIND-01, FIND-02, FIND-03
+npm run test:bdd                # 3 Gherkin scenarios (Cucumber + Playwright)
 npm run test:mobile             # Mobile Money Path (iPhone 14 WebKit + Pixel 7 Chromium)
-npm run test:ux                 # WCAG 2.1 AA ratchet, DE localization, page.route() fault controls
-npm run test:discrepancies:api  # Inverted watch on known live API findings (FIND-01, FIND-02)
+npm run test:ux                 # WCAG 2.1 AA ratchet, DE locale, page.route() fault controls
 ```
 
-### Reports
+Each suite writes to its own folder under `reports/` (`pw-api`, `pw-discrepancies`, `bdd`, `pw-mobile`, `pw-ux`) so consecutive runs never overwrite earlier HTML reports or traces.
 
-Each suite writes to an isolated directory so consecutive runs never overwrite earlier reports or traces:
+### Isolated local target (`TARGET_ENV=local`)
 
-| Command | Report Path |
-| :--- | :--- |
-| `test:api` / `test:mobile` / `test:ux` / `test:discrepancies:api` | `reports/pw-api/`, `reports/pw-mobile/`, `reports/pw-ux/`, `reports/pw-discrepancies/` (`html/`, `results.json`, `artifacts/`) |
-| `test:bdd` | `reports/bdd/` (cleaned before each run) |
-
-### Isolated Local Target (`TARGET_ENV=local`)
-
-Destructive RBAC / catalog mutation probes should only run against a local isolated instance of the upstream Sprint 5 stack:
+To run against a local upstream Sprint 5 stack instead of the shared public sandbox (the same stack CI uses for browser suites):
 
 ```sh
 git clone --depth 1 https://github.com/testsmith-io/practice-software-testing.git
 cd practice-software-testing
-SPRINT=sprint5 docker compose up -d
-docker compose exec -T -u root laravel-api composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-ffi
-docker compose exec -T laravel-api php artisan migrate:refresh --seed --force
+SPRINT=sprint5 docker compose -f docker-compose.yml up -d mariadb laravel-api web angular-ui
+docker compose -f docker-compose.yml exec -T -u root laravel-api sh -c "chown -R www-data:www-data /var/www && chmod -R 775 /var/www/storage /var/www/bootstrap/cache"
+docker compose -f docker-compose.yml exec -T laravel-api composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-ffi
+docker compose -f docker-compose.yml exec -T laravel-api php artisan migrate:refresh --seed --force
 # UI -> http://localhost:4200, API -> http://localhost:8091
 
 # back in this repository
 TARGET_ENV=local npm run test:pr-gate
 ```
 
-*(GitHub Actions runs all browser gates against this exact ephemeral Docker stack to avoid Cloudflare bot challenges and hourly DB resets on the shared public sandbox.)*
-
 `UI_BASE_URL` and `API_BASE_URL` override preset URLs for any custom deployment.
 
-> **Mobile WebKit on Windows:** Playwright's Windows WebKit build cannot decode AVIF, which Toolshop serves for product photos. The viewport image guard detects this capability at runtime and annotates skipped AVIF images rather than raising a false product defect; Chromium suites verify every image.
-
----
-
-*For a walkthrough of the full 24-vector E-Commerce Margin-Leak Research Methodology, Layer 1/2 Decision Digest, and complete 37-scenario BDD Release Gate, reach out for a private demo.*
+> **Mobile WebKit on Windows:** Playwright's Windows WebKit build cannot decode AVIF product photos. `BasePage.assertVisibleImagesLoaded()` probes AVIF support at runtime and annotates skipped AVIF images instead of raising a false defect; Chromium verifies every image.

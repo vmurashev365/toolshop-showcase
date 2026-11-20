@@ -1,0 +1,66 @@
+{
+  "capturedAt": "2026-11-20T15:38:45.993Z",
+  "cartCoordinates": {
+    "city": "London (25% geo tier)",
+    "lat": 51.5,
+    "lng": -0.12
+  },
+  "retailProduct": {
+    "id": "01M7WQJ1Z941HXMKYF393NZVN7",
+    "name": "Combination Pliers",
+    "price": 14.15,
+    "is_location_offer": false,
+    "is_rental": false
+  },
+  "rentalProduct": {
+    "id": "01M7WQJ280SW7KC0MGB2VQQE5X",
+    "name": "Excavator",
+    "price": 136.5,
+    "is_location_offer": true,
+    "is_rental": true
+  },
+  "observedCartApi": {
+    "additional_discount_percentage": 15,
+    "cart_items": [
+      {
+        "product_name": "Combination Pliers",
+        "is_location_offer": false,
+        "is_rental": false,
+        "catalog_price": 14.15,
+        "discount_percentage": 25,
+        "discounted_price": 10.61,
+        "quantity": 1
+      },
+      {
+        "product_name": "Excavator",
+        "is_location_offer": true,
+        "is_rental": true,
+        "catalog_price": 136.5,
+        "discount_percentage": 25,
+        "discounted_price": 102.38,
+        "quantity": 1
+      }
+    ]
+  },
+  "observedUiCheckout": {
+    "displayedCartTotal": "$96.04",
+    "effectiveCompoundDiscountPercent": 36.25,
+    "summaryExcerpt": [
+      "Item\tQuantity\tPrice\tTotal\t",
+      "Combination Pliers -25%",
+      "\t",
+      "Quantity for Combination Pliers",
+      "\t$14.15",
+      "$10.61\t$14.15",
+      "$10.61\t",
+      "Excavator -25%",
+      "Item for rent, price per hour\t",
+      "Quantity for Excavator",
+      "\t$136.50",
+      "$102.38\t$136.50",
+      "$102.38\t",
+      "\t\tSubtotal\t$112.99\t",
+      "\t\tDiscount (15%)\t- $16.95\t"
+    ]
+  }
+}

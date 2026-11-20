@@ -103,4 +103,40 @@ test.describe('Margin & Pricing Integrity (API) @blocker-margin', () => {
       ).toBeGreaterThanOrEqual(400);
     });
   });
+
+  test('TC-API-005: non-location-offer SKU must not receive geolocation discount or stack with 15% combination discount @known-spec-discrepancy', async ({
+    productsApi,
+    cartApi,
+  }) => {
+    // FIND-03: upstream CartService checks isset($product->is_location_offer), which is true even
+    // when is_location_offer is false. That applies the 25% London geo discount to non-offer SKUs
+    // and stacks it with the 15% retail+rental combination discount (36.25% combined reduction).
+    const retail = await productsApi.findNonLocationOfferRetailProduct();
+    const rental = await productsApi.findRentalProduct();
+    expect(retail.is_location_offer, `${retail.name} should have is_location_offer=false`).toBe(false);
+
+    const created = await cartApi.create({ lat: 51.5, lng: -0.12 });
+    expect(created.status).toBe(201);
+    const cartId = created.body.id;
+
+    const addRetail = await cartApi.addItem(cartId, { product_id: retail.id, quantity: 1 });
+    assertCatalogProductStillKnown(addRetail, retail.name);
+    expect(addRetail.status).toBe(200);
+
+    const addRental = await cartApi.addItem(cartId, { product_id: rental.id, quantity: 1 });
+    assertCatalogProductStillKnown(addRental, rental.name);
+    expect(addRental.status).toBe(200);
+
+    const cart = await cartApi.get(cartId);
+    expect(cart.status).toBe(200);
+    const retailLine = cart.body.cart_items.find((item) => item.product_id === retail.id);
+    expect(retailLine, `${retail.name} missing from cart`).toBeDefined();
+
+    await expectKnownDiscrepancy('FIND-03', () => {
+      expect(
+        retailLine?.discount_percentage ?? 0,
+        `Non-offer SKU "${retail.name}" (is_location_offer=false) should not receive a geolocation discount (also stacked with ${cart.body.additional_discount_percentage ?? 0}% combo discount)`,
+      ).toBe(0);
+    });
+  });
 });

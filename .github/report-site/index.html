@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Toolshop QA Report</title>
+  <meta name="description" content="Latest automated test run for Toolshop QA: API margin & security, known discrepancies watch, BDD business specs, mobile WebKit/Chromium, and UX guards.">
+  <style>
+    :root {
+      --bg: #f6f7f9; --surface: #ffffff; --text: #1d2330; --muted: #5b6475; --border: #dde1e8;
+      --pass: #1a7f37; --pass-bg: #e6f4ea; --fail: #c62828; --fail-bg: #fdecea; --warn: #8a5a00; --warn-bg: #fff4d6;
+      --link: #0b5cad; --code-bg: #f1f3f6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #12151b; --surface: #1b1f27; --text: #e6e9ef; --muted: #9aa3b2; --border: #2d333f;
+        --pass: #5fd07a; --pass-bg: #173322; --fail: #ff7b72; --fail-bg: #3a1d1d; --warn: #f2c35b; --warn-bg: #3a2f14;
+        --link: #6cb6ff; --code-bg: #232833;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 960px; margin: 0 auto; padding: 32px 16px 48px; }
+    h1 { font-size: 1.75rem; margin: 0 0 4px; }
+    h2 { font-size: 1.15rem; margin: 0; }
+    a { color: var(--link); }
+    .meta { color: var(--muted); margin: 0 0 24px; }
+    .meta a { color: inherit; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin: 0 0 16px; }
+    .card-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+    .card p { margin: 8px 0 0; color: var(--muted); }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .85rem; font-weight: 600; }
+    .pass { color: var(--pass); background: var(--pass-bg); }
+    .fail { color: var(--fail); background: var(--fail-bg); }
+    .warn { color: var(--warn); background: var(--warn-bg); }
+    .stats { display: flex; flex-wrap: wrap; gap: 24px; margin: 16px 0 0; }
+    .stat b { display: block; font-size: 1.5rem; }
+    .stat span { color: var(--muted); font-size: .9rem; }
+    .notes { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 14px; }
+    .notes h3 { font-size: .95rem; margin: 0 0 8px; }
+    .notes ul { margin: 0; padding-left: 18px; }
+    .notes li { margin: 4px 0; font-size: .92rem; color: var(--muted); }
+    .notes code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: .85rem; color: var(--text); }
+    .links { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 14px; }
+    footer { color: var(--muted); font-size: .9rem; margin-top: 24px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Toolshop QA · latest test run</h1>
+  <p class="meta" id="meta">Loading run details…</p>
+  <div id="cards"></div>
+  <footer>
+    Each Playwright HTML report and Cucumber report is self-contained and opens directly in the browser.
+    Browser suites run against an ephemeral Sprint 5 Docker stack in GitHub Actions; API gates run against
+    <code>api.practicesoftwaretesting.com</code>.
+  </footer>
+</main>
+<script>
+  const suites = [
+    {
+      kind: 'playwright',
+      dir: 'report-api-margin-security',
+      title: 'API · Margin & Security (live)',
+      intro: 'Quantity validation, client price/discount tampering rejection, 20% geo-discount half-up rounding, cross-user BOLA/IDOR, auth enforcement, and payment validation.'
+    },
+    {
+      kind: 'playwright',
+      dir: 'report-known-discrepancies',
+      title: 'Watch · Known Discrepancies (live API)',
+      intro: 'Inverted checks for FIND-01 (PUT /products OpenAPI security), FIND-02 (out-of-stock Cart API bypass), and FIND-03 (geo-discount on non-offer SKU & stacking). Passes while findings still reproduce; fails if upstream fixes one.',
+      annotationFilter: 'known-discrepancy'
+    },
+    {
+      kind: 'cucumber',
+      dir: 'report-bdd',
+      title: 'Executable Business Specs (BDD · isolated SUT)',
+      intro: 'Gherkin specifications for 15% retail+rental combination discount, reverse recalculation on removal & reload, and guest-to-authenticated checkout continuity.'
+    },
+    {
+      kind: 'playwright',
+      dir: 'report-mobile',
+      title: 'Mobile Money Path · iPhone 14 WebKit & Pixel 7 Chromium (isolated SUT)',
+      intro: 'End-to-end browse, add-to-cart, header badge, exact cart reconciliation, viewport image check, and zero horizontal overflow on both mobile engines.'
+    },
+    {
+      kind: 'playwright',
+      dir: 'report-ux',
+      title: 'UX Guards · WCAG 2.1 AA Ratchet, DE i18n & Fault Injection (isolated SUT)',
+      intro: 'Zero new critical/serious axe violations (ratcheted against FIND-08), DE locale layout & currency consistency (FIND-07), tampered $0.01 cart price control, and payment 500 recovery.',
+      annotationFilter: 'known-a11y-violation'
+    }
+  ];
+
+  function el(tag, attrs = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    for (const c of children) node.append(c);
+    return node;
+  }
+
+  function link(href, text) {
+    return el('a', { href }, text);
+  }
+
+  function formatSeconds(ms) {
+    if (!Number.isFinite(ms) || ms <= 0) return '—';
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
+
+  function collectPlaywrightTests(suiteNode, out = []) {
+    for (const spec of suiteNode.specs || []) {
+      for (const testItem of spec.tests || []) {
+        const last = (testItem.results || []).at(-1);
+        out.push({
+          title: spec.title,
+          project: testItem.projectName,
+          status: testItem.status,
+          annotations: last?.annotations || testItem.annotations || []
+        });
+      }
+    }
+    for (const child of suiteNode.suites || []) collectPlaywrightTests(child, out);
+    return out;
+  }
+
+  function renderPlaywrightCard(suite, data) {
+    if (!data) {
+      return el('section', { class: 'card' },
+        el('div', { class: 'card-head' }, el('h2', {}, suite.title), el('span', { class: 'badge warn' }, 'No report')),
+        el('p', {}, suite.intro));
+    }
+
+    const stats = data.stats || {};
+    const passed = (stats.expected || 0) + (stats.flaky || 0);
+    const failed = stats.unexpected || 0;
+    const skipped = stats.skipped || 0;
+    const total = passed + failed + skipped;
+
+    const badge = failed > 0
+      ? el('span', { class: 'badge fail' }, `${failed} failed`)
+      : el('span', { class: 'badge pass' }, 'All passed');
+
+    const card = el('section', { class: 'card' },
+      el('div', { class: 'card-head' }, el('h2', {}, suite.title), badge),
+      el('p', {}, suite.intro),
+      el('div', { class: 'stats' },
+        el('div', { class: 'stat' }, el('b', {}, String(total)), el('span', {}, 'tests')),
+        el('div', { class: 'stat' }, el('b', {}, String(passed)), el('span', {}, 'passed')),
+        el('div', { class: 'stat' }, el('b', {}, String(failed)), el('span', {}, 'failed')),
+        el('div', { class: 'stat' }, el('b', {}, formatSeconds(stats.duration)), el('span', {}, 'duration'))),
+      el('div', { class: 'links' }, link(`${suite.dir}/html/index.html`, 'Open Playwright HTML report')));
+
+    if (suite.annotationFilter) {
+      const tests = (data.suites || []).flatMap(s => collectPlaywrightTests(s));
+      const notes = tests.flatMap(t =>
+        t.annotations
+          .filter(a => a.type === suite.annotationFilter && a.description)
+          .map(a => a.description)
+      );
+      if (notes.length > 0) {
+        const heading = suite.annotationFilter === 'known-discrepancy'
+          ? 'Reproduced findings'
+          : 'Baselined violations tracked by ratchet';
+        card.append(el('div', { class: 'notes' },
+          el('h3', {}, heading),
+          el('ul', {}, ...notes.map(text => el('li', {}, text)))));
+      }
+    }
+
+    return card;
+  }
+
+  function renderCucumberCard(suite, features) {
+    if (!Array.isArray(features) || features.length === 0) {
+      return el('section', { class: 'card' },
+        el('div', { class: 'card-head' }, el('h2', {}, suite.title), el('span', { class: 'badge warn' }, 'No report')),
+        el('p', {}, suite.intro));
+    }
+
+    const scenarios = features.flatMap(f => (f.elements || []).filter(e => e.type === 'scenario'));
+    let passed = 0;
+    let failed = 0;
+    let stepCount = 0;
+    for (const sc of scenarios) {
+      const visibleSteps = (sc.steps || []).filter(s => !s.hidden);
+      stepCount += visibleSteps.length;
+      const hasFail = (sc.steps || []).some(s => s.result?.status === 'failed');
+      if (hasFail) failed += 1; else passed += 1;
+    }
+
+    const badge = failed > 0
+      ? el('span', { class: 'badge fail' }, `${failed} failed`)
+      : el('span', { class: 'badge pass' }, 'All passed');
+
+    return el('section', { class: 'card' },
+      el('div', { class: 'card-head' }, el('h2', {}, suite.title), badge),
+      el('p', {}, suite.intro),
+      el('div', { class: 'stats' },
+        el('div', { class: 'stat' }, el('b', {}, String(scenarios.length)), el('span', {}, 'scenarios')),
+        el('div', { class: 'stat' }, el('b', {}, String(passed)), el('span', {}, 'passed')),
+        el('div', { class: 'stat' }, el('b', {}, String(failed)), el('span', {}, 'failed')),
+        el('div', { class: 'stat' }, el('b', {}, String(stepCount)), el('span', {}, 'Gherkin steps'))),
+      el('div', { class: 'links' }, link(`${suite.dir}/cucumber-report.html`, 'Open Cucumber HTML report')));
+  }
+
+  async function load() {
+    const cards = document.getElementById('cards');
+    const meta = document.getElementById('meta');
+
+    try {
+      const run = await fetch('run.json').then(r => r.json());
+      const started = new Date(run.started);
+      meta.replaceChildren(
+        `Run ${run.conclusion === 'success' ? 'passed' : run.conclusion} on ${started.toUTCString()} · commit `,
+        link(`${run.repository}/commit/${run.sha}`, run.sha.slice(0, 7)), ' · ',
+        link(run.runUrl, 'GitHub Actions run'), ' · ',
+        link(run.repository, 'Source code'));
+    } catch {
+      meta.textContent = 'Run details are unavailable.';
+    }
+
+    for (const suite of suites) {
+      const jsonPath = suite.kind === 'cucumber'
+        ? `${suite.dir}/cucumber-report.json`
+        : `${suite.dir}/results.json`;
+      let payload = null;
+      try {
+        const res = await fetch(jsonPath);
+        if (res.ok) payload = await res.json();
+      } catch {
+        payload = null;
+      }
+      cards.append(suite.kind === 'cucumber'
+        ? renderCucumberCard(suite, payload)
+        : renderPlaywrightCard(suite, payload));
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>

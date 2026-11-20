@@ -1,0 +1,100 @@
+{
+  "capturedAt": "2026-11-20T15:38:45.993Z",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa"
+  ],
+  "violations": [
+    {
+      "screen": "catalog",
+      "id": "label-content-name-mismatch",
+      "impact": "serious",
+      "help": "Elements must have their visible text as part of their accessible name",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=playwright",
+      "nodes": [
+        {
+          "target": [
+            "#language"
+          ],
+          "html": "<button _ngcontent-ng-c2913155081=\"\" id=\"language\" type=\"button\" data-test=\"language-select\" aria-label=\"Select language\" data-bs-toggle=\"dropdown\" aria-expanded=\"false\" class=\"btn",
+          "failureSummary": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
+        }
+      ]
+    },
+    {
+      "screen": "catalog",
+      "id": "list",
+      "impact": "serious",
+      "help": "<ul> and <ol> must only directly contain <li>, <script> or <template> elements",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/list?application=playwright",
+      "nodes": [
+        {
+          "target": [
+            ".checkbox:nth-child(2) > ul"
+          ],
+          "html": "<ul _ngcontent-ng-c2621549667=\"\">",
+          "failureSummary": "Fix all of the following:\n  List element has direct children that are not allowed: fieldset"
+        },
+        {
+          "target": [
+            ".checkbox:nth-child(3) > ul"
+          ],
+          "html": "<ul _ngcontent-ng-c2621549667=\"\">",
+          "failureSummary": "Fix all of the following:\n  List element has direct children that are not allowed: fieldset"
+        },
+        {
+          "target": [
+            ".checkbox:nth-child(4) > ul"
+          ],
+          "html": "<ul _ngcontent-ng-c2621549667=\"\">",
+          "failureSummary": "Fix all of the following:\n  List element has direct children that are not allowed: fieldset"
+        }
+      ]
+    },
+    {
+      "screen": "product-detail",
+      "id": "label-content-name-mismatch",
+      "impact": "serious",
+      "help": "Elements must have their visible text as part of their accessible name",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=playwright",
+      "nodes": [
+        {
+          "target": [
+            "#language"
+          ],
+          "html": "<button _ngcontent-ng-c2913155081=\"\" id=\"language\" type=\"button\" data-test=\"language-select\" aria-label=\"Select language\" data-bs-toggle=\"dropdown\" aria-expanded=\"false\" class=\"btn",
+          "failureSummary": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
+        }
+      ]
+    },
+    {
+      "screen": "checkout-cart",
+      "id": "label-content-name-mismatch",
+      "impact": "serious",
+      "help": "Elements must have their visible text as part of their accessible name",
+      "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=playwright",
+      "nodes": [
+        {
+          "target": [
+            "a[data-test=\"nav-cart\"]"
+          ],
+          "html": "<a _ngcontent-ng-c2913155081=\"\" data-test=\"nav-cart\" aria-label=\"cart\" routerlink=\"/checkout\" class=\"nav-link\" href=\"/checkout\">",
+          "failureSummary": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
+        },
+        {
+          "target": [
+            "#language"
+          ],
+          "html": "<button _ngcontent-ng-c2913155081=\"\" id=\"language\" type=\"button\" data-test=\"language-select\" aria-label=\"Select language\" data-bs-toggle=\"dropdown\" aria-expanded=\"false\" class=\"btn",
+          "failureSummary": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
+        }
+      ]
+    }
+  ]
+}

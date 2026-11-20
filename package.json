@@ -1,7 +1,7 @@
 {
   "name": "toolshop-qa-framework-showcase",
   "version": "1.0.0",
-  "description": "Public showcase of a Risk-Based E-Commerce QA & Hybrid Automation Framework (Playwright Test + Cucumber BDD) for Practice Software Testing (Toolshop)",
+  "description": "Risk-based QA and hybrid test automation suite (Playwright Test + Cucumber BDD) for Practice Software Testing (Toolshop)",
   "private": true,
   "type": "commonjs",
   "engines": {

@@ -1,94 +1,74 @@
-# 01 · Test Strategy — Toolshop E-Commerce (`practicesoftwaretesting.com`)
+# Test Strategy — Toolshop (`practicesoftwaretesting.com`)
 
-**Standard Alignment:** ISTQB CTFL v4.0 · ISO/IEC/IEEE 29119 · ISO/IEC 25010 · OWASP API Security Top 10 · WCAG 2.1 AA (ADA / EAA)  
-**Target System:** Practice Software Testing — Toolshop (Sprint 5)  
+**Target system:** [Practice Software Testing — Toolshop (Sprint 5)](https://github.com/testsmith-io/practice-software-testing)  
 **Environments:**
 - Live UI: `https://practicesoftwaretesting.com`
-- Live API & OpenAPI Spec: `https://api.practicesoftwaretesting.com` (`/docs`)
-- Bug Verification Twin (`with-bugs`): `https://with-bugs.practicesoftwaretesting.com` (`https://api-with-bugs.practicesoftwaretesting.com`)
-- Isolated Local / CI Target: Local Docker Compose (required for destructive security/admin tests and zero-flake PR gates)
+- Live API & OpenAPI spec: `https://api.practicesoftwaretesting.com` (`/docs`)
+- Bug-verification twin (`with-bugs`): `https://with-bugs.practicesoftwaretesting.com` (`https://api-with-bugs.practicesoftwaretesting.com`)
+- Isolated local / CI stack: Docker Compose (`TARGET_ENV=local`, UI `http://localhost:4200`, API `http://localhost:8091`)
 
 ---
 
-## 1. Mission & Quality Objectives
+## 1. What This Suite Protects
 
-This strategy protects two complementary business dimensions of an e-commerce store:
+The tests target two groups of e-commerce release risks:
 
-1. **Business Analyst / Finance / Operations Perspective (Margin & Integrity):**
-   - Prevent revenue and margin leakage from client-side price/quantity tampering, invalid discount stacking, rounding drift, or selling out-of-stock items via direct API calls.
-   - Guarantee strict financial reconciliation across all surfaces: `Catalog → Product Detail → Cart → Checkout → Invoice API → PDF / Admin`.
-   - Enforce access control boundaries (RBAC & BOLA/IDOR) between Guest, Customer, and Admin roles.
-2. **Buyer Perspective (Conversion, Trust & Compliance):**
-   - Protect the end-to-end Money Path across both desktop and mobile viewports (`390×844` WebKit & Chromium), where 60–75% of real retail traffic occurs.
-   - Ensure graceful error handling and cart preservation during payment failures, retries, and guest-to-authenticated transitions.
-   - Enforce baseline accessibility (WCAG 2.1 AA critical/serious gate), layout hygiene (no broken media or horizontal overflow), and localization stability (`DE`, `FR`, `ES`, `NL`, `TR`).
+1. **Revenue, margin, and access control:**
+   - Client-side price or quantity tampering, invalid discount stacking, cent rounding drift, and out-of-stock orders bypassing UI controls via direct API calls.
+   - Exact financial reconciliation across Catalog, Product Detail, Cart, and Checkout in integer cents.
+   - Authorization boundaries (BOLA/IDOR across customer accounts, authentication on checkout/invoices, OpenAPI security contract).
+2. **Buyer checkout and usability:**
+   - Core purchase funnel on desktop (`1440×900` Chromium) and mobile (`390×844` iPhone 14 WebKit, `412×839` Pixel 7 Chromium).
+   - Graceful recovery on payment gateway failures (error shown without stack traces, cart preserved, no invoice created, retry stays enabled).
+   - Accessibility baseline (WCAG 2.1 AA critical/serious ratchet via `@axe-core/playwright`), layout hygiene (no horizontal overflow or broken visible images), and `DE` localization stability.
 
 ---
 
-## 2. Scope & Explicit Out-of-Scope Boundaries
+## 2. Scope & Out-of-Scope Boundaries
 
 ### In Scope
-- **Functional Suitability (ISO 25010):** Catalog browsing, search, multi-facet filtering (price range slider, categories, brands, CO₂ sustainability/eco-friendly), sorting, pagination, standard purchases, hourly rentals (`is_rental`), combination & geo-location discounts, 4-step checkout, all 5 payment methods, user registration/login, profile & invoice history.
-- **Security (ISO 25010 / OWASP API):** Authentication enforcement, BOLA/IDOR across users and invoices, RBAC privilege boundaries, server-side price/quantity trust validation, OpenAPI security contract auditing, PII/card-field leakage checks.
-- **Compatibility & Usability (ISO 25010):** Desktop (`1440×900` Chromium) and Mobile (`390×844` WebKit/iPhone + Chromium/Pixel), localization (`DE` text expansion & currency consistency), WCAG 2.1 AA automated scanning (`@axe-core/playwright`).
-- **Reliability & Fault Tolerance:** Network failure injection (`500` on payment/invoice), double-submit protection, cart persistence across reloads.
-- **Test Effectiveness Proof:** Controlled fault injection via `page.route()` + scheduled verification against `with-bugs.practicesoftwaretesting.com`.
+- **Pricing & cart rules:** Catalog-to-cart price reconciliation, integer-cent half-up discount rounding, 15% retail+rental combination discount and revocation on removal/reload, quantity validation (`0`, negative, fractional), client-payload tampering (`price`, `discount_percentage`).
+- **API security & contracts:** Cross-user BOLA/IDOR (`GET /users/{id}`), unauthenticated invoice rejection (`401`), `/payment/check` validation, non-destructive OpenAPI auth audit (`PUT /products/{id}`).
+- **Mobile, accessibility & localization:** Mobile Money Path on WebKit and Chromium, WCAG 2.1 AA automated scan with ratchet baseline, `DE` locale UI translation and currency consistency.
+- **Fault injection controls:** `page.route()` injection of a tampered `$0.01` cart price (proving the domain assertions fail with the expected diagnostic) and a `500` payment error (proving buyer recovery).
 
-### Explicitly Out of Scope (with Production Extension Points)
-| Area | Reason Out of Scope on Public Demo | How Handled in Real Production |
+### Out of Scope on the Public Demo
+| Area | Why out of scope on Toolshop | Typical production coverage |
 | :--- | :--- | :--- |
-| Real 3DS2 / PSD2 & PCI DSS Card Processing | Toolshop uses a simulated `/payment/check` endpoint without a live PSP (Stripe/Adyen) | Sandbox PSP cards, 3DS2 challenge flows, hosted-iframe tokenization audit |
-| Live ERP / Warehouse Stock Locking | Demo database does not decrement real inventory atomically per SKU | Concurrency load test (k6) racing 20 buyers for last 1 unit |
-| Marketing Analytics (GA4 / DataLayer) | No GA4 tag manager container on demo site | Network interception asserting `add_to_cart`, `begin_checkout`, `purchase` payloads |
-| Destructive Admin / Catalog Mutations on Live | Shared public sandbox used by global QA community | Executed exclusively against an isolated local instance (`TARGET_ENV=local`, upstream `practice-software-testing/sprint5` Docker Compose stack, see README) |
+| Real 3DS2 / PCI card processing | Toolshop uses a simulated `/payment/check` endpoint without a live PSP | Sandbox PSP test cards, 3DS2 challenge flows, tokenization checks |
+| Concurrent warehouse stock locking | Demo DB does not atomically reserve inventory under race conditions | k6 / concurrency test racing multiple buyers for the last unit |
+| Analytics / tracking tags | Demo site has no production GA4 / DataLayer pipeline | Network assertions on `add_to_cart`, `begin_checkout`, `purchase` events |
+| Destructive catalog mutations on live | Shared public sandbox used by the wider QA community | Non-destructive OpenAPI audit on live; active mutation probes only against isolated `TARGET_ENV=local` |
 
 ---
 
-## 3. Hybrid Automation Architecture (Right Tool per Risk Class)
+## 3. Hybrid Layer Split
 
-Rather than forcing every technical check into Gherkin, the framework deliberately splits responsibilities into two complementary layers inside one TypeScript codebase sharing `src/api/`, `src/domain/`, `src/components/`, and `src/pages/`:
+Instead of forcing every check into Gherkin, one TypeScript codebase splits work between two runners sharing `src/api/`, `src/domain/`, `src/components/`, and `src/pages/`:
 
 | Layer | Runner | Owns | Why |
 | :--- | :--- | :--- | :--- |
-| **Executable Business Specs** | Cucumber 13 (BDD / Gherkin) | Pricing & discount rules, guest-to-auth cart merge, UI-to-API invoice reconciliation | Readable by BA/PO; traceable to business rules; step-grouped Playwright traces |
-| **Technical & Risk Guardrails** | `@playwright/test` | API tampering & margin math, RBAC/BOLA & OpenAPI audit, Mobile WebKit/Chromium Money Path, `@axe-core/playwright` a11y, `DE` localization & layout guards, `page.route()` fault injection | Native multi-device `projects`, fast parallel workers, built-in `toHaveScreenshot`, zero Gherkin boilerplate for security/UX checks |
-| **Human Exploration** | Time-boxed Exploratory Charters *(private walkthrough pack)* | Multi-tab cart races, mobile touch usability, keyboard-only UX feel, i18n copy quality | Automation cannot evaluate human cognitive friction or visual polish |
+| **Business rules** | Cucumber 13 (Gherkin) | Retail+rental combination discount, discount revocation on removal/reload, guest-to-signed-in checkout continuity | Plain business vocabulary; step-grouped Playwright traces on failure |
+| **API, security, mobile & UX** | `@playwright/test` | API tampering & rounding, RBAC/BOLA, known-discrepancy watch, Mobile WebKit/Chromium, WCAG 2.1 AA ratchet, `DE` i18n, `page.route()` fault injection | Native multi-device `projects`, fast parallel workers, no Gherkin boilerplate for HTTP/a11y/fault checks |
 
 ---
 
-## 4. Test Data, Isolation & Environmental Safety
+## 4. Test Data, Isolation & Sandbox Rules
 
-1. **No Hardcoded Catalog Prices:** Product IDs, prices, stock status, and rental rates are discovered dynamically from `GET /products` at runtime so tests validate live integrity without brittle fixtures.
-2. **Per-Test Isolated Users:** Mutating tests register unique ephemeral users (`qa.<scope>.<uuid>@example.test`) via `POST /users/register` so parallel workers never collide.
-3. **Exact Integer-Cent Math:** All monetary assertions operate in integer cents (`src/domain/money.ts`) with explicit half-up rounding to avoid IEEE-754 floating-point drift.
-4. **Shared-Sandbox Ethics Rule:** Destructive tests (e.g., verifying `PUT /products/{id}` rejects customer price edits) are **strictly non-destructive** against the live public API (verified via OpenAPI security audit; active probes belong on an isolated `TARGET_ENV=local` instance), preventing interference with other users. Parallelism is capped (4 local / 2 CI workers) because heavier load visibly degrades the shared sandbox.
-5. **Sandbox Re-Seeding Guard:** The public sandbox periodically re-seeds its database with new product IDs. Every test that expects a `422` (quantity cap, out-of-stock, bad quantity) first checks that the rejection is not "unknown product ID" (`assertCatalogProductStillKnown`), so a mid-run reset surfaces as an explicit environment failure instead of a false pass (or a false "defect fixed" in the inverted discrepancy runners).
-
----
-
-## 5. Browser & Device Matrix
-
-| Target | Engine | Viewport | Scope | Cadence |
-| :--- | :--- | :--- | :--- | :--- |
-| API Contract & Margin | Node / `APIRequestContext` | N/A (headless) | Tampering, Discounts, Inventory, RBAC/BOLA | Every PR |
-| Desktop Primary | Chromium | `1440×900` | BDD Business Specs, Fault Injection, A11y, i18n | Every PR |
-| Mobile iOS Proxy | WebKit | `390×844` (iPhone 14) | Money Path, Overflow, Touch Reachability | Every PR |
-| Mobile Android Proxy | Chromium | `393×851` (Pixel 7) | Money Path, Filters Collapse, Cart Access | Nightly |
-| Bug-Hunting Twin | Chromium / API | `1440×900` | Suite effectiveness check on `with-bugs` | Nightly / Weekly |
+1. **Dynamic catalog discovery:** Product IDs, prices, stock flags, and rental items are queried from `GET /products` at runtime rather than hardcoded.
+2. **Per-test users:** Tests that need an authenticated buyer register a fresh ephemeral user (`qa.<scope>.<uuid>@example.test`) so parallel workers never collide.
+3. **Integer-cent money math:** All price and discount checks run in integer cents (`src/domain/money.ts`) with explicit half-up rounding.
+4. **Non-destructive live probes:** No test mutates catalog items on `api.practicesoftwaretesting.com`. Worker count is capped (`4` local / `2` CI) to avoid overloading the shared sandbox.
+5. **Re-seed guard:** The public sandbox periodically re-seeds its DB with new ULIDs. Tests expecting `422` first verify the error is not an unknown `product_id` (`assertCatalogProductStillKnown`), preventing a mid-run reset from looking like a valid rejection or a fixed bug.
 
 ---
 
-## 6. Entry & Exit Criteria (Release Gates)
+## 5. Execution Matrix & Release Gates
 
-### Entry Criteria
-- `npm run typecheck` passes with 0 TypeScript errors.
-- `npm run bdd:dry` resolves 100% of Gherkin steps with 0 undefined/ambiguous snippets.
-- Target environment health check (`GET /products?page=1` returns `200`).
-
-### Exit Criteria (Release Go / No-Go)
-| Gate | Tag / Suite | Mandatory Threshold | Business Decision if Red |
+| Suite | Runner / Target | CI cadence | Release decision if red |
 | :--- | :--- | :--- | :--- |
-| **Margin & Pricing** | `@blocker-margin` | 100% pass (excluding documented `@known-spec-discrepancy` tracked in discrepancy runner) | **STOP RELEASE** — direct financial loss |
-| **Security & RBAC** | `@blocker-security` | 100% pass, 0 unacknowledged BOLA/RBAC gaps | **STOP RELEASE** — legal & fraud exposure |
-| **Conversion Funnel** | `@blocker-conversion` | 100% pass on Desktop Chromium + Mobile WebKit | **STOP RELEASE** — revenue drop |
-| **UX / A11y / i18n** | `@ux-guard` | 0 `critical` and 0 new `serious` axe violations on catalog, product detail and checkout (pre-existing ones baselined as `FIND-08`, ratchet); 0 horizontal overflow; 0 broken images in the viewport | Soft gate on PR; must be triaged before production release |
+| `test:api` (`api-margin-security`) | `@playwright/test` · live API | Every push / PR / weekly | Block release — pricing or security regression |
+| `test:discrepancies:api` (`known-discrepancies-api`) | `@playwright/test` · live API | Every push / PR / weekly | Review — either a tracked finding was fixed (promote to regression gate) or a precondition broke |
+| `test:bdd` | Cucumber + Chromium · isolated Docker SUT | Every push / PR / weekly | Block release — discount or checkout continuity broken |
+| `test:mobile` | `@playwright/test` · iPhone 14 WebKit & Pixel 7 Chromium · isolated Docker SUT | Every push / PR / weekly | Block release — mobile buyer funnel broken |
+| `test:ux` | `@playwright/test` · Chromium · isolated Docker SUT | Every push / PR / weekly | Triage before release — new WCAG 2.1 AA violation, i18n regression, or failed fault control |

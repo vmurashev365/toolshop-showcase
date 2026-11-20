@@ -1,0 +1,30 @@
+{
+  "capturedAt": "2026-11-20T15:38:45.993Z",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "cartItemAdded": "Combination Pliers",
+  "navCartVisibleWhenCollapsed": false,
+  "cartBadgeAfterExpandingHamburger": "1",
+  "addToCartButtonBoundingBoxOnProductDetail": {
+    "x": 12,
+    "y": 1119.84375,
+    "width": 112.09375,
+    "height": 62
+  },
+  "duplicateDataTestFiltersNodes": [
+    {
+      "tag": "button",
+      "id": null,
+      "className": "btn btn-secondary d-block d-md-none btn-block mb-3",
+      "textPreview": "Filters"
+    },
+    {
+      "tag": "div",
+      "id": "filters",
+      "className": "collapse d-md-block col-md-3 mb-3",
+      "textPreview": "Sort Name (A - Z)Name (Z - A)Price (High"
+    }
+  ]
+}
