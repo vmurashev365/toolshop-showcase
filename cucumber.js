@@ -8,8 +8,12 @@ const formatTo = (formatter, file) => `${formatter}:"${reportDir}/${file}"`;
 
 const common = {
   requireModule: ['tsx/cjs'],
-  require: ['tests/bdd/step-definitions/**/*.ts', 'tests/bdd/hooks/**/*.ts'],
-  format: ['summary', formatTo('html', 'cucumber-report.html'), formatTo('json', 'cucumber-report.json')],
+  require: ['tests/bdd/step-definitions/**/*.ts', 'tests/bdd/hooks/World.ts', 'tests/bdd/hooks/hooks.ts'],
+  format: [
+    './tests/bdd/hooks/terminalFormatter.ts',
+    formatTo('html', 'cucumber-report.html'),
+    formatTo('json', 'cucumber-report.json'),
+  ],
   formatOptions: {
     snippetInterface: 'async-await',
   },

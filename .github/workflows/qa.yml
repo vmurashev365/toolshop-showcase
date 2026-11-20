@@ -72,7 +72,11 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium webkit
+      - name: Install Playwright browsers (Chromium & WebKit)
+        timeout-minutes: 8
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Start isolated Toolshop Sprint 5 stack (Docker Compose)
         run: |
