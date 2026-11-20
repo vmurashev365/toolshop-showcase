@@ -38,6 +38,8 @@ Test strategy and release gate criteria: [test_documentation/01-test-strategy.md
 | [`tests/pw/ux/`](tests/pw/ux/) | 4 | Playwright · Chromium · Docker SUT | WCAG 2.1 AA ratchet (`@axe-core/playwright`), `DE` localization & layout, `page.route()` tampered `$0.01` price control, `page.route()` payment `500` recovery |
 | **Total** | **18** | | All executable in this repo and published in CI |
 
+This repository is a public subset of a larger private suite, which I can walk through on request.
+
 ## Architecture & tech stack
 
 Playwright 1.65 · TypeScript 7 · Cucumber 13 (Gherkin) · `@axe-core/playwright` · Node.js 24 · GitHub Actions · GitHub Pages
