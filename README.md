@@ -1,5 +1,7 @@
 # Toolshop E-Commerce · Risk-Based QA & Hybrid Automation Framework (Showcase)
 
+[![Toolshop QA Risk Gates](https://github.com/vmurashev365/toolshop-showcase/actions/workflows/qa.yml/badge.svg)](https://github.com/vmurashev365/toolshop-showcase/actions/workflows/qa.yml)
+
 Production-grade QA architecture for [Practice Software Testing (Toolshop)](https://practicesoftwaretesting.com/), built to industry e-commerce and ISTQB v4.0 / ISO 29119 / ISO 25010 standards.
 
 Instead of automating UI clicks blindly, testing starts from **commercial risk & margin protection** (pricing integrity, discount recalculation, inventory guards, RBAC/BOLA, and buyer conversion) and chooses the right execution layer per risk class inside a single TypeScript codebase.
@@ -90,13 +92,18 @@ Each suite writes to an isolated directory so consecutive runs never overwrite e
 Destructive RBAC / catalog mutation probes should only run against a local isolated instance of the upstream Sprint 5 stack:
 
 ```sh
-git clone https://github.com/testsmith-io/practice-software-testing.git
-cd practice-software-testing/sprint5
-docker compose up -d            # UI -> http://localhost:4200, API -> http://localhost:8091
+git clone --depth 1 https://github.com/testsmith-io/practice-software-testing.git
+cd practice-software-testing
+SPRINT=sprint5 docker compose up -d
+docker compose exec -T -u root laravel-api composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-ffi
+docker compose exec -T laravel-api php artisan migrate:refresh --seed --force
+# UI -> http://localhost:4200, API -> http://localhost:8091
 
 # back in this repository
 TARGET_ENV=local npm run test:pr-gate
 ```
+
+*(GitHub Actions runs all browser gates against this exact ephemeral Docker stack to avoid Cloudflare bot challenges and hourly DB resets on the shared public sandbox.)*
 
 `UI_BASE_URL` and `API_BASE_URL` override preset URLs for any custom deployment.
 

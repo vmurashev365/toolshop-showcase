@@ -25,7 +25,7 @@ export class ProductDetailsPage extends BasePage {
 
   async open(productId: string): Promise<void> {
     await this.goto(`/product/${productId}`);
-    await expect(this.productName).toBeVisible();
+    await expect(this.productName).toBeVisible({ timeout: 15_000 });
   }
 
   /** The "$" sign is rendered outside [data-test="unit-price"], so a bare "14.15" is accepted. */

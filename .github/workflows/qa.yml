@@ -5,7 +5,7 @@ on:
     branches: [main, master]
   pull_request:
   schedule:
-    # Weekly: regression gates against the live sandbox (drift) + known-discrepancy watch
+    # Weekly: regression gates + live known-discrepancy watch
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
@@ -22,8 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: '24'
           cache: npm
@@ -33,90 +33,110 @@ jobs:
       - run: npm run pw:list
 
   api-margin-security:
-    name: Gate · Margin & Security (API)
+    name: Gate · Margin & Security (API · Live)
     needs: static-gates
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
       - run: npm run test:api
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() }}
         with:
           name: report-api-margin-security
           path: reports/pw-api/
           if-no-files-found: ignore
 
-  bdd-business-specs:
-    name: Gate · Executable Business Specs (BDD)
+  # Browser gates run against an ephemeral upstream Toolshop Sprint 5 Docker stack (TARGET_ENV=local).
+  # The public live storefront (practicesoftwaretesting.com) enforces Cloudflare browser verification
+  # on cloud runner IPs and re-seeds its DB hourly; an isolated SUT keeps PR gates deterministic and
+  # completely free of bot-challenge blocks.
+  browser-gates-local-sut:
+    name: Gate · Browser Specs (BDD, Mobile WebKit/Chromium, A11y & Faults)
     needs: static-gates
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
+    env:
+      TARGET_ENV: local
+      SPRINT: sprint5
+      DISABLE_LOGGING: 'true'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:bdd
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: report-bdd
-          path: reports/bdd/
-          if-no-files-found: ignore
-
-  mobile-money-path:
-    name: Gate · Mobile WebKit/Chromium Money Path
-    needs: static-gates
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:mobile
-      - uses: actions/upload-artifact@v4
+
+      - name: Start isolated Toolshop Sprint 5 stack (Docker Compose)
+        run: |
+          git clone --depth 1 https://github.com/testsmith-io/practice-software-testing.git /tmp/toolshop-sut
+          cd /tmp/toolshop-sut
+          docker compose -f docker-compose.yml up -d --force-recreate
+
+          echo "Waiting for MariaDB..."
+          for i in $(seq 1 40); do
+            if docker compose exec -T mariadb mysqladmin ping -h localhost -u root -proot --silent 2>/dev/null; then
+              echo "MariaDB is ready."
+              break
+            fi
+            sleep 2
+          done
+
+          echo "Installing Laravel Composer dependencies & seeding DB..."
+          docker compose exec -T -u root laravel-api composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-ffi
+          docker compose exec -T laravel-api php artisan migrate:refresh --seed --force
+
+          echo "Waiting for API on http://localhost:8091/products?page=1 ..."
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:8091/products?page=1" | grep -q '"data"'; then
+              echo "Toolshop API is ready."
+              break
+            fi
+            sleep 2
+          done
+
+          echo "Waiting for Angular UI on http://localhost:4200 ..."
+          for i in $(seq 1 60); do
+            if [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4200)" = "200" ]; then
+              echo "Toolshop UI is ready."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Toolshop UI failed to start within 5 minutes."
+          docker compose logs --tail=80 angular-ui
+          exit 1
+
+      - name: Gate · Executable Business Specs (BDD)
+        run: npm run test:bdd
+
+      - name: Gate · Mobile WebKit/Chromium Money Path
+        if: ${{ !cancelled() }}
+        run: npm run test:mobile
+
+      - name: Gate · A11y, Localization & Fault Controls
+        if: ${{ !cancelled() }}
+        run: npm run test:ux
+
+      - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() }}
         with:
-          name: report-mobile
-          path: reports/pw-mobile/
+          name: reports-browser-gates
+          path: |
+            reports/bdd/
+            reports/pw-mobile/
+            reports/pw-ux/
           if-no-files-found: ignore
 
-  ux-guards:
-    name: Gate · A11y, Localization & Fault Controls
-    needs: static-gates
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:ux
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: report-ux
-          path: reports/pw-ux/
-          if-no-files-found: ignore
-
-  # Inverted checks: green while tracked live findings still reproduce; red when fixed
-  # (promote to regression gate) or when a precondition breaks.
+  # Inverted checks against live API: green while tracked live findings still reproduce;
+  # red when fixed (promote to regression gate) or when a precondition breaks.
   known-discrepancies:
     name: Watch · Known Spec Discrepancies (live API findings)
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
@@ -124,15 +144,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: '24'
           cache: npm
       - run: npm ci
       - name: API findings (FIND-01, FIND-02)
         run: npm run test:discrepancies:api
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() }}
         with:
           name: report-known-discrepancies

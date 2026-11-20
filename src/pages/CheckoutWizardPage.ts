@@ -62,7 +62,7 @@ export class CheckoutWizardPage extends BasePage {
   }
 
   async waitForCartLoaded(): Promise<void> {
-    await expect(this.cartTotal).toBeVisible();
+    await expect(this.cartTotal).toBeVisible({ timeout: 15_000 });
   }
 
   /** Cart row whose product title is exactly `productName` (not a substring match). */

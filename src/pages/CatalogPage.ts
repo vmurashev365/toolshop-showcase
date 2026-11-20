@@ -18,7 +18,7 @@ export class CatalogPage extends BasePage {
 
   async open(): Promise<void> {
     await this.goto('/');
-    await expect(this.productCards.first()).toBeVisible();
+    await expect(this.productCards.first()).toBeVisible({ timeout: 15_000 });
   }
 
   cardByProductId(productId: string): Locator {
