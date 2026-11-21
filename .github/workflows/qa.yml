@@ -4,9 +4,6 @@ on:
   push:
     branches: [main, master]
   pull_request:
-  schedule:
-    # Weekly: regression gates + live known-discrepancy watch
-    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -18,195 +15,82 @@ concurrency:
 
 jobs:
   static-gates:
-    name: Static · Typecheck & Discovery
+    name: Static · Lint, Unit Tests, Typecheck & Discovery
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
         with:
-          node-version: '24'
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run bdd:dry
-      - run: npm run pw:list
+      - run: npm run check:static
 
-  api-margin-security:
-    name: Gate · Margin & Security (API · Live)
-    needs: static-gates
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-node@v7.1.0
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci
-      - run: npm run test:api
-      - uses: actions/upload-artifact@v7.0.2
-        if: ${{ !cancelled() }}
-        with:
-          name: report-api-margin-security
-          path: reports/pw-api/
-          if-no-files-found: ignore
-
-  # Inverted checks against live API: green while tracked live findings (FIND-01, FIND-02, FIND-03)
-  # still reproduce; red when fixed (promote to regression gate) or when a precondition breaks.
-  known-discrepancies:
-    name: Watch · Known Discrepancies (API · Live)
-    needs: static-gates
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-node@v7.1.0
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci
-      - name: API findings (FIND-01, FIND-02, FIND-03)
-        run: npm run test:discrepancies:api
-      - uses: actions/upload-artifact@v7.0.2
-        if: ${{ !cancelled() }}
-        with:
-          name: report-known-discrepancies
-          path: reports/pw-discrepancies/
-          if-no-files-found: ignore
-
-  # Browser gates run against an ephemeral upstream Toolshop Sprint 5 Docker stack (TARGET_ENV=local).
-  # The public live storefront (practicesoftwaretesting.com) enforces Cloudflare browser verification
-  # on cloud runner IPs and re-seeds its DB hourly; an isolated SUT keeps PR gates deterministic and
-  # completely free of bot-challenge blocks.
   browser-gates-local-sut:
-    name: Gate · Browser Specs (BDD, Mobile WebKit/Chromium, A11y & Faults)
+    name: Gate · API & Browser Regression (isolated Toolshop)
     needs: static-gates
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
       TARGET_ENV: local
-      SPRINT: sprint5
-      DISABLE_LOGGING: 'true'
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
         with:
-          node-version: '24'
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - name: Install Playwright browsers (Chromium & WebKit)
         timeout-minutes: 8
-        env:
-          DEBIAN_FRONTEND: noninteractive
         run: npx playwright install --with-deps chromium webkit
-
-      - name: Start isolated Toolshop Sprint 5 stack (Docker Compose)
+      - name: Start and verify the isolated Toolshop stack
         id: start-sut
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          git clone --depth 1 https://github.com/testsmith-io/practice-software-testing.git /tmp/toolshop-sut
-          cd /tmp/toolshop-sut
-
-          dump_logs() {
-            echo "::group::Docker Compose status & logs"
-            docker compose -f docker-compose.yml ps || true
-            docker compose -f docker-compose.yml logs --tail=80 mariadb laravel-api web angular-ui || true
-            echo "::endgroup::"
-          }
-          trap dump_logs ERR
-
-          # Start only the 4 runtime services so the legacy composer:2.6.6 service never races with
-          # PHP 8.3 composer install inside laravel-api on the same bind-mounted /var/www directory.
-          docker compose -f docker-compose.yml up -d --force-recreate mariadb laravel-api web angular-ui
-
-          echo "Fixing bind-mount ownership & installing Laravel Composer dependencies..."
-          docker compose -f docker-compose.yml exec -T -u root laravel-api sh -c \
-            'chown -R www-data:www-data /var/www && chmod -R 775 /var/www/storage /var/www/bootstrap/cache'
-          docker compose -f docker-compose.yml exec -T \
-            -e COMPOSER_AUTH="{\"github-oauth\":{\"github.com\":\"${GITHUB_TOKEN}\"}}" \
-            laravel-api composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-req=ext-ffi
-
-          echo "Waiting for MariaDB (TCP auth to toolshop DB from laravel-api)..."
-          db_ready=0
-          for i in $(seq 1 45); do
-            if docker compose -f docker-compose.yml exec -T laravel-api \
-              php -r "new PDO('mysql:host=mariadb;port=3306;dbname=toolshop', 'user', 'root');" 2>/dev/null; then
-              echo "MariaDB is ready."
-              db_ready=1
-              break
-            fi
-            sleep 2
-          done
-          if [ "$db_ready" -ne 1 ]; then
-            echo "MariaDB did not accept connections within 90s."
-            exit 1
-          fi
-
-          echo "Seeding Toolshop database..."
-          docker compose -f docker-compose.yml exec -T laravel-api php artisan migrate:refresh --seed --force
-
-          echo "Waiting for API on http://localhost:8091/products?page=1 ..."
-          api_ready=0
-          for i in $(seq 1 30); do
-            if curl -sf "http://localhost:8091/products?page=1" | grep -q '"data"'; then
-              echo "Toolshop API is ready."
-              api_ready=1
-              break
-            fi
-            sleep 2
-          done
-          if [ "$api_ready" -ne 1 ]; then
-            echo "Toolshop API did not become ready within 60s."
-            exit 1
-          fi
-
-          echo "Waiting for Angular UI on http://localhost:4200 ..."
-          ui_ready=0
-          for i in $(seq 1 60); do
-            if [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:4200)" = "200" ]; then
-              echo "Toolshop UI is ready."
-              ui_ready=1
-              break
-            fi
-            sleep 5
-          done
-          if [ "$ui_ready" -ne 1 ]; then
-            echo "Toolshop UI failed to start within 5 minutes."
-            exit 1
-          fi
-
+          mkdir -p reports/startup
+          bash scripts/start-toolshop.sh "$RUNNER_TEMP/toolshop-sut" 2>&1 | tee reports/startup/toolshop.log
+      - name: Gate · Margin & Security (API)
+        if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
+        run: npm run test:api
       - name: Gate · Executable Business Specs (BDD)
         if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
         run: npm run test:bdd
-
       - name: Gate · Mobile WebKit/Chromium Money Path
         if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
         run: npm run test:mobile
-
       - name: Gate · A11y, Localization & Fault Controls
         if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
         run: npm run test:ux
-
+      - uses: actions/upload-artifact@v7.0.2
+        if: ${{ !cancelled() && steps.start-sut.outcome == 'failure' }}
+        with:
+          name: diagnostic-toolshop-startup
+          path: reports/startup/
+          if-no-files-found: error
       - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
         with:
-          name: report-bdd
+          name: report-local-api-margin-security
+          path: reports/pw-api/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v7.0.2
+        if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
+        with:
+          name: report-local-bdd
           path: reports/bdd/
           if-no-files-found: ignore
-
       - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
         with:
-          name: report-mobile
+          name: report-local-mobile
           path: reports/pw-mobile/
           if-no-files-found: ignore
-
       - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
         with:
-          name: report-ux
+          name: report-local-ux
           path: reports/pw-ux/
           if-no-files-found: ignore

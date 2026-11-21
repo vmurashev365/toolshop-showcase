@@ -23,7 +23,7 @@ const common = {
   worldParameters: {
     browser: process.env.BROWSER || 'chromium',
     headed: process.env.HEADED === 'true',
-    targetEnv: process.env.TARGET_ENV || 'live',
+    targetEnv: process.env.TARGET_ENV,
     timeout: Number(process.env.TIMEOUT) || 30_000,
   },
 };

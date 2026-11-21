@@ -8,7 +8,7 @@
 | Layer | Expected | Observed on live Toolshop |
 | --- | --- | --- |
 | **Storefront UI** | Out-of-stock product (`in_stock: false`) cannot be added to the cart. | Displays `Out of stock` (`[data-test="out-of-stock"]`) and disables the `Add to cart` button (`Long Nose Pliers`, `$14.24`). |
-| **Cart API** | `POST /carts/{cartId}` rejects an `in_stock: false` product with `4xx`. | Returns `200 OK` (`{"result": "item added or updated"}`), and `GET /carts/{cartId}` contains the item with `in_stock: false`. |
+| **Cart API** | `POST /carts/{cartId}` rejects an `in_stock: false` product with a stock-specific client error. | Returns `200 OK` (`{"result": "item added or updated"}`), and `GET /carts/{cartId}` contains the item with `in_stock: false`. |
 
 ![Long Nose Pliers product page showing Out of stock and disabled Add to cart button](../evidence/find-02-out-of-stock-ui.png)
 
@@ -24,4 +24,4 @@ Toolshop is a training app. Checking `testsmith-io/practice-software-testing` is
 
 ## Automated control
 
-`TC-API-004` (`@known-spec-discrepancy`) dynamically finds an `in_stock: false` retail SKU, verifies it was not invalidated by a mid-run sandbox reset (`assertCatalogProductStillKnown`), and confirms via `expectKnownDiscrepancy('FIND-02', ...)` that `POST /carts/{id}` still accepts it.
+`TC-API-004` confirms that the known `200` response actually added the selected out-of-stock item to a fresh cart. A `409` or `422` with `OUT_OF_STOCK` or an explicit out-of-stock validation message on `product_id` signals a possible fix and triggers promotion review. Unrelated validation, a catalog re-seed, server or transport failure, and ambiguous cart evidence fail the watch as inconclusive.

@@ -9,7 +9,7 @@ import { CatalogPage } from '../../src/pages/CatalogPage';
 import { ProductDetailsPage } from '../../src/pages/ProductDetailsPage';
 import { AuthPage } from '../../src/pages/AuthPage';
 import { CheckoutWizardPage } from '../../src/pages/CheckoutWizardPage';
-import { isAssertionError } from '../../src/domain/assertions';
+import { observeKnownDiscrepancy } from '../../src/domain/knownDiscrepancy';
 
 export interface ToolshopFixtures {
   env: EnvConfig;
@@ -71,18 +71,6 @@ export { expect };
  * for a reproduced defect (which is what a blanket test.fail() would do).
  */
 export async function expectKnownDiscrepancy(defectId: string, assertion: () => void | Promise<void>): Promise<void> {
-  try {
-    await assertion();
-  } catch (error) {
-    if (!isAssertionError(error)) {
-      throw error;
-    }
-    const firstLine = String(error instanceof Error ? error.message : error).split('\n')[0];
-    test.info().annotations.push({ type: 'known-discrepancy', description: `${defectId} still reproduces: ${firstLine}` });
-    return;
-  }
-  throw new Error(
-    `${defectId} no longer reproduces: the correct behaviour is now observed. ` +
-      'Remove the @known-spec-discrepancy tag and the expectKnownDiscrepancy() wrapper to promote this test to the regression gate.',
-  );
+  const description = await observeKnownDiscrepancy(defectId, assertion);
+  test.info().annotations.push({ type: 'known-discrepancy', description });
 }

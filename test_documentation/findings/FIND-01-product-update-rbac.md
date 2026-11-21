@@ -5,9 +5,7 @@
 
 ## What was actually checked (non-destructive)
 
-No mutating `PUT` or `PATCH` request was sent to the shared public sandbox (`api.practicesoftwaretesting.com`). Doing so could alter catalog prices for other testers using the demo environment.
-
-Instead, the gap was verified through two read-only sources:
+The automated watch sends a read-only `GET /docs` request. The showcase records two sources of historical evidence.
 
 1. **Live OpenAPI contract (`GET /docs`):**
    - `DELETE /products/{productId}` declares `"security": [{ "apiAuth": [] }]`, documents a `401` response, and states `"Admin role is required to delete a specific product"`.
@@ -24,4 +22,4 @@ In a real storefront, leaving catalog updates unauthenticated while locking `DEL
 
 ## Automated control
 
-`TC-SEC-003` (`@known-spec-discrepancy`) fetches `GET /docs` non-destructively and runs an inverted assertion via `expectKnownDiscrepancy('FIND-01', ...)`: it stays green while `PUT /products/{productId}` lacks a `security` scheme and turns red if upstream adds authentication, signalling that the check can be promoted to the blocking regression suite.
+`TC-SEC-003` (`@known-spec-discrepancy`) fetches `GET /docs` non-destructively and runs an inverted assertion via `expectKnownDiscrepancy('FIND-01', ...)`: it stays green when the PUT operation has no `security` field and turns red for a truthy declaration, signalling that the contract check can be promoted. The automated watch only reads the PUT operation in OpenAPI. The separate source review above documents the historical controller and request behavior.

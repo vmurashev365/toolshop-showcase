@@ -1,6 +1,7 @@
 import { test, expect, expectKnownDiscrepancy } from '../fixtures';
 import type { ApiResult } from '../../../src/api/ApiClient';
 import { assertCatalogProductStillKnown } from '../../../src/api/CartApi';
+import { assertOutOfStockRejected } from '../../../src/api/stock';
 import { applyDiscountHalfUp, dollarsToCents } from '../../../src/domain/money';
 import { assertApiAmountEquals } from '../../../src/domain/assertions';
 
@@ -92,16 +93,16 @@ test.describe('Margin & Pricing Integrity (API) @blocker-margin', () => {
     // FIND-02: UI disables Add to Cart for in_stock=false, but live API currently accepts it (200).
     const outOfStock = await productsApi.findOutOfStockRetailProduct();
     const created = await cartApi.create();
-    expect(created.status).toBe(201);
+    expect(created.status, 'FIND-02 inconclusive: the Cart API did not create a fresh cart').toBe(201);
 
-    const addRes = await cartApi.addItem(created.body.id, { product_id: outOfStock.id, quantity: 1 });
-    assertCatalogProductStillKnown(addRes, outOfStock.name);
-    await expectKnownDiscrepancy('FIND-02', () => {
-      expect(
-        addRes.status,
-        `Out-of-stock product "${outOfStock.name}" (in_stock=false) should be rejected by Cart API`,
-      ).toBeGreaterThanOrEqual(400);
-    });
+    const addRes = await cartApi.addItem(created.body.id, { product_id: outOfStock.id, quantity: 1 })
+      .catch((error: unknown) => {
+        throw new Error('FIND-02 inconclusive: the Cart API request failed.', { cause: error });
+      });
+
+    await expectKnownDiscrepancy('FIND-02', () =>
+      assertOutOfStockRejected(addRes, outOfStock, () => cartApi.get(created.body.id)),
+    );
   });
 
   test('TC-API-005: non-location-offer SKU must not receive geolocation discount or stack with 15% combination discount @known-spec-discrepancy', async ({

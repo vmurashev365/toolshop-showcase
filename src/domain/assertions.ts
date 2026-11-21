@@ -30,6 +30,7 @@ export function assertApiAmountEquals(field: string, expectedCents: number, actu
   if (typeof actualDollars !== 'number' || !Number.isFinite(actualDollars)) {
     throw new DomainAssertionError(`${field}: expected ${formatUsd(expectedCents)}, actual ${JSON.stringify(actualDollars)}.`);
   }
+  assertExactCents(field, actualDollars, expectedCents);
   const actualCents = dollarsToCents(actualDollars);
   if (actualCents !== expectedCents) {
     throw new DomainAssertionError(`${field}: expected ${formatUsd(expectedCents)}, actual ${formatUsd(actualCents)}.`);
@@ -38,16 +39,16 @@ export function assertApiAmountEquals(field: string, expectedCents: number, actu
 }
 
 /**
- * Asserts that an API amount is expressed in whole cents (no sub-cent remainder and no
- * IEEE-754 drift such as 61.80749999999999).
+ * Checks for a sub-cent remainder, allowing binary representation noise in ordinary cents.
  */
-export function assertExactCents(field: string, actualDollars: number | null | undefined): void {
+export function assertExactCents(field: string, actualDollars: number | null | undefined, expectedCents?: number): void {
   if (typeof actualDollars !== 'number' || !Number.isFinite(actualDollars)) {
     throw new DomainAssertionError(`${field}: expected a finite amount in whole cents, actual ${JSON.stringify(actualDollars)}.`);
   }
   const scaled = actualDollars * 100;
   if (Math.abs(scaled - Math.round(scaled)) >= 1e-6) {
-    throw new DomainAssertionError(`${field}: has sub-cent or floating-point drift, actual ${String(actualDollars)}.`);
+    const expected = expectedCents === undefined ? 'a whole-cent amount' : formatUsd(expectedCents);
+    throw new DomainAssertionError(`${field}: expected ${expected} in whole cents, actual ${String(actualDollars)}.`);
   }
 }
 

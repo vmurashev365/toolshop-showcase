@@ -1,0 +1,18 @@
+services:
+  angular-ui:
+    ports: !override
+      - '127.0.0.1:4200:4200'
+    volumes:
+      - ui-dependencies:/app/node_modules
+  laravel-api:
+    volumes:
+      - api-dependencies:/var/www/vendor
+  web:
+    ports: !override
+      - '127.0.0.1:8091:80'
+  mariadb:
+    ports: !override []
+
+volumes:
+  ui-dependencies:
+  api-dependencies:

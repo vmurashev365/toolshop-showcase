@@ -1,0 +1,33 @@
+name: Toolshop Live Observation
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  known-discrepancies:
+    name: Watch · Known Spec Discrepancies (shared live sandbox)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TARGET_ENV: live
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Observe known API findings
+        id: api-watch
+        run: npm run test:discrepancies:api
+      - uses: actions/upload-artifact@v7.0.2
+        if: ${{ !cancelled() && (steps.api-watch.outcome == 'success' || steps.api-watch.outcome == 'failure') }}
+        with:
+          name: report-live-known-discrepancies
+          path: reports/pw-discrepancies/
+          if-no-files-found: ignore

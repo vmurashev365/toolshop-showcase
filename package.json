@@ -5,11 +5,11 @@
   "private": true,
   "type": "commonjs",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.13.0"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "bdd:dry": "cucumber-js --profile all --dry-run",
+    "typecheck": "node node_modules/typescript-native/bin/tsc --noEmit",
+    "bdd:dry": "cross-env REPORT_DIR=reports/bdd-dry-run cucumber-js --profile all --dry-run",
     "pw:list": "playwright test --list --reporter=list",
     "test:api": "cross-env PW_REPORT_DIR=reports/pw-api playwright test --project=api-margin-security",
     "test:mobile": "cross-env PW_REPORT_DIR=reports/pw-mobile playwright test --project=mobile-webkit --project=mobile-chromium",
@@ -18,8 +18,12 @@
     "pretest:bdd": "node scripts/clean-report-dir.js reports/bdd",
     "test:bdd": "cucumber-js",
     "test:with-bugs": "cross-env TARGET_ENV=with-bugs PW_REPORT_DIR=reports/pw-with-bugs playwright test --project=api-margin-security",
-    "test:pr-gate": "npm run typecheck && npm run bdd:dry && npm run test:api && npm run test:bdd",
-    "clean": "node -e \"const { rmSync } = require('node:fs'); for (const dir of ['reports', 'playwright-report', 'test-results', 'screenshots', 'videos', 'har']) rmSync(dir, { recursive: true, force: true });\""
+    "test:pr-gate": "npm run check:static && npm run check:local && npm run test:api && npm run test:bdd && npm run test:mobile && npm run test:ux",
+    "clean": "node -e \"const { rmSync } = require('node:fs'); for (const dir of ['reports', 'playwright-report', 'test-results', 'screenshots', 'videos', 'har']) rmSync(dir, { recursive: true, force: true });\"",
+    "lint": "eslint playwright.config.ts scripts src tests",
+    "test:unit": "node --import tsx --test tests/unit/*.test.ts",
+    "check:static": "npm run lint && npm run typecheck && npm run test:unit && npm run bdd:dry && npm run pw:list",
+    "check:local": "node --import tsx scripts/check-local-toolshop.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
@@ -27,7 +31,11 @@
     "@playwright/test": "1.65.1",
     "@types/node": "24.19.2",
     "cross-env": "^10.0.0",
+    "eslint": "10.15.0",
+    "eslint-plugin-playwright": "2.12.2",
     "tsx": "4.23.15",
-    "typescript": "7.0.2"
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.73.0",
+    "typescript-native": "npm:typescript@7.0.2"
   }
 }

@@ -59,7 +59,7 @@ Instead of forcing every check into Gherkin, one TypeScript codebase splits work
 2. **Per-test users:** Tests that need an authenticated buyer register a fresh ephemeral user (`qa.<scope>.<uuid>@example.test`) so parallel workers never collide.
 3. **Integer-cent money math:** All price and discount checks run in integer cents (`src/domain/money.ts`) with explicit half-up rounding.
 4. **Non-destructive live probes:** No test mutates catalog items on `api.practicesoftwaretesting.com`. Worker count is capped (`4` local / `2` CI) to avoid overloading the shared sandbox.
-5. **Re-seed guard:** The public sandbox periodically re-seeds its DB with new ULIDs. Tests expecting `422` first verify the error is not an unknown `product_id` (`assertCatalogProductStillKnown`), preventing a mid-run reset from looking like a valid rejection or a fixed bug.
+5. **Re-seed guard:** The public sandbox periodically re-seeds its DB with new ULIDs. Tests expecting `422` first verify the error is not an unknown `product_id` (`assertCatalogProductStillKnown`), so a mid-run reset is reported as an environment issue. FIND-02 requires stock-rule evidence to declare a fix.
 
 ---
 
@@ -67,8 +67,8 @@ Instead of forcing every check into Gherkin, one TypeScript codebase splits work
 
 | Suite | Runner / Target | CI cadence | Release decision if red |
 | :--- | :--- | :--- | :--- |
-| `test:api` (`api-margin-security`) | `@playwright/test` · live API | Every push / PR / weekly | Block release — pricing or security regression |
-| `test:discrepancies:api` (`known-discrepancies-api`) | `@playwright/test` · live API | Every push / PR / weekly | Review — either a tracked finding was fixed (promote to regression gate) or a precondition broke |
-| `test:bdd` | Cucumber + Chromium · isolated Docker SUT | Every push / PR / weekly | Block release — discount or checkout continuity broken |
-| `test:mobile` | `@playwright/test` · iPhone 14 WebKit & Pixel 7 Chromium · isolated Docker SUT | Every push / PR / weekly | Block release — mobile buyer funnel broken |
-| `test:ux` | `@playwright/test` · Chromium · isolated Docker SUT | Every push / PR / weekly | Triage before release — new WCAG 2.1 AA violation, i18n regression, or failed fault control |
+| `test:api` (`api-margin-security`) | `@playwright/test` · isolated Docker SUT | Push / PR / manual | Block release — pricing or security regression |
+| `test:discrepancies:api` (`known-discrepancies-api`) | `@playwright/test` · live API | Weekly (Monday 06:00 UTC) / manual | Review — either a tracked finding was fixed (promote to regression gate) or a precondition broke |
+| `test:bdd` | Cucumber + Chromium · isolated Docker SUT | Push / PR / manual | Block release — discount or checkout continuity broken |
+| `test:mobile` | `@playwright/test` · iPhone 14 WebKit & Pixel 7 Chromium · isolated Docker SUT | Push / PR / manual | Block release — mobile buyer funnel broken |
+| `test:ux` | `@playwright/test` · Chromium · isolated Docker SUT | Push / PR / manual | Triage before release — new WCAG 2.1 AA violation, i18n regression, or failed fault control |

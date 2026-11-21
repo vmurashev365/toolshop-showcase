@@ -9,36 +9,39 @@ on:
 permissions:
   actions: read
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  publish:
-    # Runs on main publish their reports, whatever the result. Pull request runs never do.
-    if: github.event.workflow_run.event != 'pull_request' && github.event.workflow_run.conclusion != 'cancelled'
+  assemble:
+    # Only isolated showcase regression runs on main supply public reports.
+    if: >-
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch') &&
+      github.event.workflow_run.conclusion != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      report: ${{ steps.site.outputs.report }}
     steps:
       - name: Check out the report landing page
         uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           sparse-checkout: .github/report-site
+          persist-credentials: false
       - name: Download reports from the QA run
         uses: actions/download-artifact@v8
         with:
-          pattern: report-*
-          path: site
+          pattern: report-local-*
+          path: reports
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
       - name: Assemble the site
+        id: site
+        shell: bash
         env:
           RUN_URL: ${{ github.event.workflow_run.html_url }}
           RUN_EVENT: ${{ github.event.workflow_run.event }}
@@ -48,16 +51,64 @@ jobs:
         run: |
           mkdir -p site
           cp .github/report-site/index.html site/
+          for suite in report-local-api-margin-security report-local-bdd report-local-mobile report-local-ux; do
+            if [[ -d "reports/$suite" ]]; then
+              cp -R "reports/$suite" site/
+            fi
+          done
+          report=$(find site -type f \( -path '*/html/index.html' -o -path '*/cucumber-report.html' \) | sort | sed -n '1p')
+          if [[ -z "$report" ]]; then
+            echo "::error::No suite report was generated. See the QA run for startup or static gate diagnostics."
+            exit 1
+          fi
+          echo "report=${report#site/}" >> "$GITHUB_OUTPUT"
           jq -n --arg runUrl "$RUN_URL" --arg event "$RUN_EVENT" --arg started "$RUN_STARTED" \
             --arg conclusion "$RUN_CONCLUSION" --arg sha "$HEAD_SHA" \
             --arg repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
             '{runUrl: $runUrl, event: $event, started: $started, conclusion: $conclusion, sha: $sha, repository: $repository}' \
             > site/run.json
-          find site -maxdepth 2 | sort
       - name: Upload the Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
           path: site
+
+  deploy:
+    needs: assemble
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check that Pages uses the GitHub Actions publishing source
+        uses: actions/configure-pages@v5
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+      - name: Verify the deployed report without credentials
+        shell: bash
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          REPORT_PATH: ${{ needs.assemble.outputs.report }}
+          QA_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          QA_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          base=${PAGE_URL%/}
+          for attempt in {1..12}; do
+            if curl -fsSL --max-time 10 "$base/?run=$QA_RUN_ID" -o landing.html &&
+              grep -q 'Toolshop QA Report' landing.html &&
+              curl -fsSL --max-time 10 "$base/run.json?run=$QA_RUN_ID" -o run.json &&
+              jq -e --arg url "$QA_RUN_URL" '.runUrl == $url' run.json >/dev/null &&
+              curl -fsSL --max-time 10 "$base/$REPORT_PATH?run=$QA_RUN_ID" -o report.html &&
+              grep -Eqi '<title>.*(Playwright|Cucumber)' report.html; then
+              echo "Verified signed-out access to $QA_RUN_URL at $base/"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::Could not open the public landing page and a report for $QA_RUN_URL."
+          exit 1

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Toolshop QA Report</title>
-  <meta name="description" content="Latest automated test run for Toolshop QA: API margin & security, known discrepancies watch, BDD business specs, mobile WebKit/Chromium, and UX guards.">
+  <meta name="description" content="Latest automated test run for Toolshop QA: isolated Sprint 5 API, BDD business specs, mobile WebKit/Chromium, and UX checks.">
   <style>
     :root {
       --bg: #f6f7f9; --surface: #ffffff; --text: #1d2330; --muted: #5b6475; --border: #dde1e8;
@@ -53,40 +53,32 @@
   <div id="cards"></div>
   <footer>
     Each Playwright HTML report and Cucumber report is self-contained and opens directly in the browser.
-    Browser suites run against an ephemeral Sprint 5 Docker stack in GitHub Actions; API gates run against
-    <code>api.practicesoftwaretesting.com</code>.
+    The API and browser checks run against the same isolated Sprint 5 Docker stack.
   </footer>
 </main>
 <script>
   const suites = [
     {
       kind: 'playwright',
-      dir: 'report-api-margin-security',
-      title: 'API · Margin & Security (live)',
+      dir: 'report-local-api-margin-security',
+      title: 'API · Margin & Security (isolated SUT)',
       intro: 'Quantity validation, client price/discount tampering rejection, 20% geo-discount half-up rounding, cross-user BOLA/IDOR, auth enforcement, and payment validation.'
     },
     {
-      kind: 'playwright',
-      dir: 'report-known-discrepancies',
-      title: 'Watch · Known Discrepancies (live API)',
-      intro: 'Inverted checks for FIND-01 (PUT /products OpenAPI security), FIND-02 (out-of-stock Cart API bypass), and FIND-03 (geo-discount on non-offer SKU & stacking). Passes while findings still reproduce; fails if upstream fixes one.',
-      annotationFilter: 'known-discrepancy'
-    },
-    {
       kind: 'cucumber',
-      dir: 'report-bdd',
+      dir: 'report-local-bdd',
       title: 'Executable Business Specs (BDD · isolated SUT)',
       intro: 'Gherkin specifications for 15% retail+rental combination discount, reverse recalculation on removal & reload, and guest-to-authenticated checkout continuity.'
     },
     {
       kind: 'playwright',
-      dir: 'report-mobile',
+      dir: 'report-local-mobile',
       title: 'Mobile Money Path · iPhone 14 WebKit & Pixel 7 Chromium (isolated SUT)',
       intro: 'End-to-end browse, add-to-cart, header badge, exact cart reconciliation, viewport image check, and zero horizontal overflow on both mobile engines.'
     },
     {
       kind: 'playwright',
-      dir: 'report-ux',
+      dir: 'report-local-ux',
       title: 'UX Guards · WCAG 2.1 AA Ratchet, DE i18n & Fault Injection (isolated SUT)',
       intro: 'Zero new critical/serious axe violations (ratcheted against FIND-08), DE locale layout & currency consistency (FIND-07), tampered $0.01 cart price control, and payment 500 recovery.',
       annotationFilter: 'known-a11y-violation'
@@ -160,11 +152,8 @@
           .map(a => a.description)
       );
       if (notes.length > 0) {
-        const heading = suite.annotationFilter === 'known-discrepancy'
-          ? 'Reproduced findings'
-          : 'Baselined violations tracked by ratchet';
         card.append(el('div', { class: 'notes' },
-          el('h3', {}, heading),
+          el('h3', {}, 'Baselined violations tracked by ratchet'),
           el('ul', {}, ...notes.map(text => el('li', {}, text)))));
       }
     }

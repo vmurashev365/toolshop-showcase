@@ -17,3 +17,11 @@
   ![Mobile catalog with collapsed hamburger menu and floating widget overlapping product title](../evidence/find-04-mobile-header-collapsed.png)
 - **Expanded header (cart badge `1` only appears after tapping hamburger):**  
   ![Mobile catalog with expanded hamburger menu showing cart icon and badge 1](../evidence/find-04-mobile-header-expanded.png)
+
+### WebKit cart overflow (TC-MOB-001)
+
+The November 20, 2026 showcase run measured a 422 px document in a 390 px iPhone 14 WebKit viewport on both attempts at `/checkout`, step 1 (Cart), with one Combination Pliers item. In the failure screenshot, the rightmost remove control is partly outside the viewport. The overflow assertion remains in the gate. Chromium passed the same path in that run.
+
+On November 21, a local run against pinned Sprint 5 revision `ae7caecb811dd8952c09d997e69be7cb946ecd44` reproduced 422 px versus 390 px on both Linux WebKit attempts (Debian Bookworm, Playwright 1.65.1). The same test passed in WebKit and Chromium on Windows.
+
+[Failure screenshot](../evidence/mobile-cart-overflow-webkit-ci.png) · [QA run and `report-mobile` trace](https://github.com/vmurashev365/toolshop-showcase/actions/runs/44769291883#artifacts)

@@ -21,15 +21,28 @@ const PRESETS: Record<TargetEnv, { uiBaseUrl: string; apiBaseUrl: string }> = {
   },
 };
 
-export function resolveEnv(overrideTarget?: string): EnvConfig {
-  const raw = (overrideTarget || process.env.TARGET_ENV || 'live').toLowerCase();
-  const target: TargetEnv =
-    raw === 'with-bugs' || raw === 'local' || raw === 'live' ? raw : 'live';
-  const preset = PRESETS[target];
+function resolveBaseUrl(variable: 'UI_BASE_URL' | 'API_BASE_URL', fallback: string, target: TargetEnv): string {
+  const value = process.env[variable] || fallback;
+  const url = new URL(value);
+  if ((url.protocol !== 'http:' && url.protocol !== 'https:') || url.username || url.password) {
+    throw new Error(`${variable} must be an HTTP(S) URL without credentials.`);
+  }
+  if (target === 'local' && !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) {
+    throw new Error(`${variable} must use a loopback host when TARGET_ENV=local.`);
+  }
+  return value;
+}
 
+export function resolveEnv(overrideTarget?: string): EnvConfig {
+  const raw = (overrideTarget ?? process.env.TARGET_ENV ?? 'local').toLowerCase();
+  if (raw !== 'local' && raw !== 'live' && raw !== 'with-bugs') {
+    throw new Error(`Invalid TARGET_ENV ${JSON.stringify(raw)}. Choose local, live, or with-bugs.`);
+  }
+
+  const preset = PRESETS[raw];
   return {
-    target,
-    uiBaseUrl: process.env.UI_BASE_URL || preset.uiBaseUrl,
-    apiBaseUrl: process.env.API_BASE_URL || preset.apiBaseUrl,
+    target: raw,
+    uiBaseUrl: resolveBaseUrl('UI_BASE_URL', preset.uiBaseUrl, raw),
+    apiBaseUrl: resolveBaseUrl('API_BASE_URL', preset.apiBaseUrl, raw),
   };
 }

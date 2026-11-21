@@ -25,7 +25,7 @@ export function formatUsd(cents: number): string {
 
 /**
  * Half-up percentage discount calculation in integer cents.
- * Verified live against Toolshop API: $48.41 with 20% off -> 38.728 -> $38.73 (3873 cents).
+ * For example, 20% off $48.41 yields an expected whole-cent amount of $38.73.
  *
  * Only whole percentages are accepted (all Toolshop discounts are 5/15/20/25%), which keeps
  * the arithmetic in exact integers: cents * remainingPercent is an integer, so +50 / 100 + floor
