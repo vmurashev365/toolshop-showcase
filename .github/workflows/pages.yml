@@ -51,7 +51,7 @@ jobs:
         run: |
           mkdir -p site
           cp .github/report-site/index.html site/
-          for suite in report-local-api-margin-security report-local-bdd report-local-mobile report-local-ux; do
+          for suite in report-local-api-margin-security report-local-known-discrepancies report-local-bdd report-local-mobile report-local-ux; do
             if [[ -d "reports/$suite" ]]; then
               cp -R "reports/$suite" site/
             fi

@@ -140,6 +140,7 @@ function main(name, args) {
 
   const reports = [
     { name: 'api', label: 'API margin and security' },
+    { name: 'discrepancies', label: 'Known API discrepancies' },
     { name: 'bdd', label: 'Cucumber business scenarios' },
     { name: 'mobile', label: 'Mobile WebKit and Chromium' },
     { name: 'ux', label: 'Accessibility, localisation and fault controls' },

@@ -1,7 +1,7 @@
 # FIND-03 · Geolocation discount applied to non-offer SKUs and stacked with 15% combination discount
 
 **Environment:** `https://practicesoftwaretesting.com` and `https://api.practicesoftwaretesting.com`, observed 2026-11-20.  
-**Evidence:** [Checkout UI screenshot](../evidence/find-03-discount-stacking-ui.png) · [Captured Cart API & UI summary (JSON)](../evidence/find-03-discount-stacking.json) · [Automated check (`TC-API-005`)](../../tests/pw/api/margin-tampering.spec.ts#L107-L141)
+**Evidence:** [Checkout UI screenshot](../evidence/find-03-discount-stacking-ui.png) · [Captured Cart API & UI summary (JSON)](../evidence/find-03-discount-stacking.json) · [Automated check (`TC-API-005`)](../../tests/pw/api/margin-tampering.spec.ts#L111-L150)
 
 ## Reproduction
 

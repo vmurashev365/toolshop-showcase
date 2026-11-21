@@ -133,13 +133,17 @@ test.describe('Margin & Pricing Integrity (API) @blocker-margin', () => {
 
     const cart = await cartApi.get(cartId);
     expect(cart.status).toBe(200);
+    expect(
+      cart.body.additional_discount_percentage,
+      'Mixed retail + rental cart should qualify for the 15% combination discount',
+    ).toBe(15);
     const retailLine = cart.body.cart_items.find((item) => item.product_id === retail.id);
     expect(retailLine, `${retail.name} missing from cart`).toBeDefined();
 
     await expectKnownDiscrepancy('FIND-03', () => {
       expect(
         retailLine?.discount_percentage ?? 0,
-        `Non-offer SKU "${retail.name}" (is_location_offer=false) should not receive a geolocation discount (also stacked with ${cart.body.additional_discount_percentage ?? 0}% combo discount)`,
+        `Non-offer SKU "${retail.name}" (is_location_offer=false) should not receive a geolocation discount (stacked with ${cart.body.additional_discount_percentage}% combo discount)`,
       ).toBe(0);
     });
   });

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Toolshop QA Report</title>
-  <meta name="description" content="Latest automated test run for Toolshop QA: isolated Sprint 5 API, BDD business specs, mobile WebKit/Chromium, and UX checks.">
+  <meta name="description" content="Latest automated test run for Toolshop QA: isolated Sprint 5 API, known discrepancies watch, BDD business specs, mobile WebKit/Chromium, and UX checks.">
   <style>
     :root {
       --bg: #f6f7f9; --surface: #ffffff; --text: #1d2330; --muted: #5b6475; --border: #dde1e8;
@@ -53,7 +53,7 @@
   <div id="cards"></div>
   <footer>
     Each Playwright HTML report and Cucumber report is self-contained and opens directly in the browser.
-    The API and browser checks run against the same isolated Sprint 5 Docker stack.
+    All suites run against the same isolated Sprint 5 Docker stack pinned to a verified commit.
   </footer>
 </main>
 <script>
@@ -65,6 +65,14 @@
       intro: 'Quantity validation, client price/discount tampering rejection, 20% geo-discount half-up rounding, cross-user BOLA/IDOR, auth enforcement, and payment validation.'
     },
     {
+      kind: 'playwright',
+      dir: 'report-local-known-discrepancies',
+      title: 'Watch · Known Discrepancies (API · isolated SUT)',
+      intro: 'Inverted checks for FIND-01 (PUT /products OpenAPI security), FIND-02 (out-of-stock Cart API bypass), and FIND-03 (geo-discount on non-offer SKU & stacking). Passes while findings still reproduce; fails if upstream fixes one.',
+      annotationFilter: 'known-discrepancy',
+      annotationHeading: 'Reproduced findings tracked by watch'
+    },
+    {
       kind: 'cucumber',
       dir: 'report-local-bdd',
       title: 'Executable Business Specs (BDD · isolated SUT)',
@@ -74,14 +82,17 @@
       kind: 'playwright',
       dir: 'report-local-mobile',
       title: 'Mobile Money Path · iPhone 14 WebKit & Pixel 7 Chromium (isolated SUT)',
-      intro: 'End-to-end browse, add-to-cart, header badge, exact cart reconciliation, viewport image check, and zero horizontal overflow on both mobile engines.'
+      intro: 'End-to-end browse, add-to-cart, header badge, exact cart reconciliation, viewport image check, and horizontal overflow guards on both mobile engines (FIND-09 Linux WebKit checkout overflow tracked via ratchet).',
+      annotationFilter: 'known-discrepancy',
+      annotationHeading: 'Tracked mobile findings'
     },
     {
       kind: 'playwright',
       dir: 'report-local-ux',
       title: 'UX Guards · WCAG 2.1 AA Ratchet, DE i18n & Fault Injection (isolated SUT)',
       intro: 'Zero new critical/serious axe violations (ratcheted against FIND-08), DE locale layout & currency consistency (FIND-07), tampered $0.01 cart price control, and payment 500 recovery.',
-      annotationFilter: 'known-a11y-violation'
+      annotationFilter: 'known-a11y-violation',
+      annotationHeading: 'Baselined violations tracked by ratchet'
     }
   ];
 
@@ -153,7 +164,7 @@
       );
       if (notes.length > 0) {
         card.append(el('div', { class: 'notes' },
-          el('h3', {}, 'Baselined violations tracked by ratchet'),
+          el('h3', {}, suite.annotationHeading || 'Notes'),
           el('ul', {}, ...notes.map(text => el('li', {}, text)))));
       }
     }

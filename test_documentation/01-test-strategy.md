@@ -68,7 +68,7 @@ Instead of forcing every check into Gherkin, one TypeScript codebase splits work
 | Suite | Runner / Target | CI cadence | Release decision if red |
 | :--- | :--- | :--- | :--- |
 | `test:api` (`api-margin-security`) | `@playwright/test` · isolated Docker SUT | Push / PR / manual | Block release — pricing or security regression |
-| `test:discrepancies:api` (`known-discrepancies-api`) | `@playwright/test` · live API | Weekly (Monday 06:00 UTC) / manual | Review — either a tracked finding was fixed (promote to regression gate) or a precondition broke |
+| `test:discrepancies:api` (`known-discrepancies-api`) | `@playwright/test` · isolated Docker SUT & weekly live API | Push / PR (isolated SUT) + weekly Monday 06:00 UTC (live) | Review — either a tracked finding was fixed (promote to regression gate) or a precondition broke |
 | `test:bdd` | Cucumber + Chromium · isolated Docker SUT | Push / PR / manual | Block release — discount or checkout continuity broken |
 | `test:mobile` | `@playwright/test` · iPhone 14 WebKit & Pixel 7 Chromium · isolated Docker SUT | Push / PR / manual | Block release — mobile buyer funnel broken |
 | `test:ux` | `@playwright/test` · Chromium · isolated Docker SUT | Push / PR / manual | Triage before release — new WCAG 2.1 AA violation, i18n regression, or failed fault control |

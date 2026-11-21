@@ -55,6 +55,9 @@ jobs:
       - name: Gate · Margin & Security (API)
         if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
         run: npm run test:api
+      - name: Watch · Known Spec Discrepancies (API)
+        if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
+        run: npm run test:discrepancies:api
       - name: Gate · Executable Business Specs (BDD)
         if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
         run: npm run test:bdd
@@ -75,6 +78,12 @@ jobs:
         with:
           name: report-local-api-margin-security
           path: reports/pw-api/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v7.0.2
+        if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}
+        with:
+          name: report-local-known-discrepancies
+          path: reports/pw-discrepancies/
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() && steps.start-sut.outcome == 'success' }}

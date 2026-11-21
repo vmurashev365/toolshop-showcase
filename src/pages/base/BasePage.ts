@@ -17,17 +17,19 @@ export class BasePage {
   }
 
   /**
-   * Buyer UX Guardrail: ensures no horizontal scrollbar overflow on desktop or mobile viewports.
+   * Returns the measured overflow in CSS pixels after checking the viewport limit.
    */
-  async assertNoHorizontalOverflow(): Promise<void> {
+  async assertNoHorizontalOverflow(maxOverflowPx = 0): Promise<number> {
     const metrics = await this.page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       innerWidth: window.innerWidth,
     }));
+    const overflowPx = Math.max(0, metrics.scrollWidth - metrics.innerWidth);
     expect(
-      metrics.scrollWidth,
-      `Horizontal overflow detected: scrollWidth=${metrics.scrollWidth}px > innerWidth=${metrics.innerWidth}px`,
-    ).toBeLessThanOrEqual(metrics.innerWidth);
+      overflowPx,
+      `Horizontal overflow with document ${metrics.scrollWidth}px and viewport ${metrics.innerWidth}px`,
+    ).toBeLessThanOrEqual(maxOverflowPx);
+    return overflowPx;
   }
 
   /**

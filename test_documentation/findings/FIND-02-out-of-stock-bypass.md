@@ -1,7 +1,7 @@
 # FIND-02 · Out-of-stock SKU blocked in UI, accepted by Cart API
 
 **Environment:** `https://practicesoftwaretesting.com` and `https://api.practicesoftwaretesting.com`, observed 2026-11-20.  
-**Evidence:** [Out-of-stock UI screenshot](../evidence/find-02-out-of-stock-ui.png) · [Captured Cart API response (JSON)](../evidence/find-02-cart-api-response.json) · [Automated check (`TC-API-004`)](../../tests/pw/api/margin-tampering.spec.ts#L88-L105)
+**Evidence:** [Out-of-stock UI screenshot](../evidence/find-02-out-of-stock-ui.png) · [Captured Cart API response (JSON)](../evidence/find-02-cart-api-response.json) · [Automated check (`TC-API-004`)](../../tests/pw/api/margin-tampering.spec.ts#L91-L109)
 
 ## Expected vs. observed behavior
 

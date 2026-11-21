@@ -243,7 +243,7 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
     assert.match(await html(new URL('trace/index.html', opened.url)), /Playwright Trace Viewer/i);
   });
 
-  await t.test('passing combined run opens one index for its four suites', async () => {
+  await t.test('passing combined run opens one index for its five suites', async () => {
     const result = npmRun('test:pr-gate');
     assert.equal(result.status, 0, result.output);
     assert.equal(opens().length, 4);
@@ -252,6 +252,7 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
     const hrefs = [...index.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
     assert.deepEqual(hrefs, [
       'pw-api/html/index.html',
+      'pw-discrepancies/html/index.html',
       'bdd/cucumber-report.html',
       'pw-mobile/html/index.html',
       'pw-ux/html/index.html',
@@ -266,6 +267,7 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
     const opened = opens().at(-1);
     const index = await html(opened.url);
     assert.match(index, /API margin and security .* Passed .*pw-api\/html\/index\.html/);
+    assert.match(index, /Known API discrepancies .* Passed .*pw-discrepancies\/html\/index\.html/);
     assert.match(index, /Cucumber business scenarios .* Failed .*bdd\/cucumber-report\.html/);
     assert.match(index, /Mobile WebKit and Chromium .* Did not run/);
     assert.match(index, /Accessibility, localisation and fault controls .* Did not run/);
@@ -310,5 +312,16 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
     assert.match(result.output, /Open it at http:\/\/127\.0\.0\.1:/);
     assert.match(await html(opens().at(-1).url), /<title>Cucumber<\/title>/);
     assert.equal(completedRuns()[0].entry, 'index.html');
+  });
+
+  await t.test('a failing discrepancy watch stops the gate before BDD', async () => {
+    const before = opens().length;
+    const result = npmRun('test:pr-gate', [], { FIXTURE_PW_FAIL: 'known-discrepancies-api' });
+    assert.equal(result.status, 1, result.output);
+    assert.equal(opens().length, before + 1);
+    const index = await html(opens().at(-1).url);
+    assert.match(index, /Known API discrepancies .* Failed .*pw-discrepancies\/html\/index\.html/);
+    assert.match(index, /Cucumber business scenarios .* Did not run/);
+    assert.doesNotMatch(index, /href="(?:bdd|pw-mobile|pw-ux)\//);
   });
 });
