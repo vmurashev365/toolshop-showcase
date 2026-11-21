@@ -79,13 +79,16 @@ The default `TARGET_ENV` is `local` (UI `http://localhost:4200`, API `http://loc
 
 `npm run check:static` runs ESLint, native TypeScript 7 typechecking, Node unit tests, Cucumber dry-run, and Playwright discovery. ESLint's typed rules use the TypeScript 6 compiler API. Run `npm run test:api`, `npm run test:bdd`, `npm run test:mobile`, or `npm run test:ux` individually against a ready local stack. For Cucumber, optional variables include `BROWSER`, `HEADED`, `TIMEOUT` (milliseconds), `PARALLEL`, and `TAGS`.
 
-Stop the local stack from the QA checkout with the following command.
+If a BDD step reports `ECONNREFUSED` on port 8091, run `npm run check:local` to check the storefront and seeded catalog API. For an existing stack, resume its containers from the QA checkout, then run the tests once the readiness check passes. Use the checkout path you passed to the startup script.
 
 ```sh
-docker compose --project-name toolshop-qa -f ./tmp/toolshop-sut/docker-compose.yml -f ./scripts/toolshop-compose.yml down
+docker compose --project-name toolshop-qa -f ./tmp/toolshop-sut/docker-compose.yml -f ./scripts/toolshop-compose.yml start mariadb laravel-api web angular-ui
+npm run check:local
 ```
 
-Each suite writes its own report under `reports/`. Cucumber discovery writes to `reports/bdd-dry-run/`.
+To pause the stack between sessions and keep the seeded database, use the same Compose command with `stop` in place of `start`.
+
+On a desktop, local test commands open their HTML report when the run finishes, including after a test failure. `test:pr-gate` opens one index with the completed suite reports and shows any suites that were skipped. Run `npm run report:open` to reopen the most recent completed run with HTML. Local runs are kept under `reports/runs/`. CI keeps the existing artifact paths, and Cucumber discovery writes to `reports/bdd-dry-run/`.
 
 ### CI reports
 

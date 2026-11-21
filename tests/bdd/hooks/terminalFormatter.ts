@@ -315,6 +315,10 @@ export default class TerminalFormatter extends Formatter {
           this.log(`${indented}\n`);
         }
       });
+      if (this.failures.some(({ message }) => /connect ECONNREFUSED (?:127\.0\.0\.1|::1):\d+\b/.test(message))) {
+        this.log('\nA local endpoint refused the connection. Check that the Toolshop stack is running ' +
+          'and run `npm run check:local` to verify the UI and API. See "Run it locally" in README.md.\n');
+      }
     }
 
     const totalScenarios = [...this.scenarioCounts.values()].reduce((a, b) => a + b, 0);
