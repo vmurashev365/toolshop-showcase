@@ -92,10 +92,7 @@ function collectGherkinStepKeywords(document: unknown): Map<string, string> {
   return keywords;
 }
 
-function keywordForPickleStep(
-  keywords: Map<string, string>,
-  astNodeIds: readonly string[] = [],
-): string {
+function keywordForPickleStep(keywords: Map<string, string>, astNodeIds: readonly string[] = []): string {
   return astNodeIds.map((id) => keywords.get(id)).find(Boolean) ?? 'Step';
 }
 
@@ -134,14 +131,7 @@ function plural(count: number, singular: string): string {
 }
 
 function formatStatusCounts(counts: Map<string, number>): string {
-  const order = [
-    Status.FAILED,
-    Status.AMBIGUOUS,
-    Status.UNDEFINED,
-    Status.PENDING,
-    Status.SKIPPED,
-    Status.PASSED,
-  ];
+  const order = [Status.FAILED, Status.AMBIGUOUS, Status.UNDEFINED, Status.PENDING, Status.SKIPPED, Status.PASSED];
   const parts: string[] = [];
   for (const status of order) {
     const n = counts.get(status);
@@ -316,8 +306,10 @@ export default class TerminalFormatter extends Formatter {
         }
       });
       if (this.failures.some(({ message }) => /connect ECONNREFUSED (?:127\.0\.0\.1|::1):\d+\b/.test(message))) {
-        this.log('\nA local endpoint refused the connection. Check that the Toolshop stack is running ' +
-          'and run `npm run check:local` to verify the UI and API. See "Run it locally" in README.md.\n');
+        this.log(
+          '\nA local endpoint refused the connection. Check that the Toolshop stack is running ' +
+            'and run `npm run check:local` to verify the UI and API. See "Run it locally" in README.md.\n',
+        );
       }
     }
 

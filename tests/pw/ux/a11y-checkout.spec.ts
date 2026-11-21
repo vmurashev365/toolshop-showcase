@@ -12,7 +12,8 @@ import { test, expect } from '../fixtures';
  * so it cannot silently hide a regression later.
  */
 const KNOWN_SERIOUS_VIOLATIONS: Record<string, string> = {
-  'label-content-name-mismatch': 'FIND-08: language switcher / cart link accessible name does not contain the visible label',
+  'label-content-name-mismatch':
+    'FIND-08: language switcher / cart link accessible name does not contain the visible label',
   list: 'FIND-08: catalog filter <ul> contains non-<li> children',
 };
 
@@ -63,11 +64,17 @@ test.describe('Accessibility Gate (WCAG 2.1 AA) @ux-guard', () => {
 
     const known = findings.filter((f) => f.impact === 'serious' && f.id in KNOWN_SERIOUS_VIOLATIONS);
     for (const f of known) {
-      test.info().annotations.push({ type: 'known-a11y-violation', description: `${f.screen}: ${f.id} (${KNOWN_SERIOUS_VIOLATIONS[f.id]})` });
+      test.info().annotations.push({
+        type: 'known-a11y-violation',
+        description: `${f.screen}: ${f.id} (${KNOWN_SERIOUS_VIOLATIONS[f.id]})`,
+      });
     }
 
     const newViolations = findings.filter((f) => !known.includes(f));
-    expect(newViolations, `New critical/serious WCAG 2.1 AA violations:\n${JSON.stringify(newViolations, null, 2)}`).toEqual([]);
+    expect(
+      newViolations,
+      `New critical/serious WCAG 2.1 AA violations:\n${JSON.stringify(newViolations, null, 2)}`,
+    ).toEqual([]);
 
     const staleBaseline = Object.keys(KNOWN_SERIOUS_VIOLATIONS).filter((id) => !known.some((f) => f.id === id));
     expect(

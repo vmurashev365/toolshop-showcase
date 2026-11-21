@@ -38,21 +38,30 @@ Given(START_BASKET, async function (this: ToolshopWorld) {
   this.activeCartId = created.body.id;
 });
 
-When('the shopper adds {int} unit(s) of an in-stock retail product to the basket', async function (this: ToolshopWorld, qty: number) {
-  this.selectedProduct = await this.productsApi.findNonEcoRetailProduct();
-  this.selectedQuantity = qty;
-  await addOrFail(this, this.selectedProduct, qty);
-});
+When(
+  'the shopper adds {int} unit(s) of an in-stock retail product to the basket',
+  async function (this: ToolshopWorld, qty: number) {
+    this.selectedProduct = await this.productsApi.findNonEcoRetailProduct();
+    this.selectedQuantity = qty;
+    await addOrFail(this, this.selectedProduct, qty);
+  },
+);
 
-When('the shopper adds a rental item for {int} hours to the basket', async function (this: ToolshopWorld, hours: number) {
-  this.selectedRental = await this.productsApi.findRentalProduct();
-  await addOrFail(this, this.selectedRental, hours);
-});
+When(
+  'the shopper adds a rental item for {int} hours to the basket',
+  async function (this: ToolshopWorld, hours: number) {
+    this.selectedRental = await this.productsApi.findRentalProduct();
+    await addOrFail(this, this.selectedRental, hours);
+  },
+);
 
-Then('the basket qualifies for the {int} percent combination discount', async function (this: ToolshopWorld, pct: number) {
-  const cart = await readBasket(this);
-  expect(cart.additional_discount_percentage, 'Basket-level combination discount').toBe(pct);
-});
+Then(
+  'the basket qualifies for the {int} percent combination discount',
+  async function (this: ToolshopWorld, pct: number) {
+    const cart = await readBasket(this);
+    expect(cart.additional_discount_percentage, 'Basket-level combination discount').toBe(pct);
+  },
+);
 
 Then('every basket line should keep the exact catalog unit price in cents', async function (this: ToolshopWorld) {
   const cart = await readBasket(this);

@@ -82,13 +82,18 @@ function writeIndex(runDir, reports) {
     const link = result.html ? '<a href="' + result.html + '">Open report</a>' : 'No HTML report';
     return '<li>' + label + ' \u2014 ' + outcome + ' \u00b7 ' + link + '</li>';
   });
-  writeFileSync(join(runDir, 'index.html'), [
-    '<!doctype html><html lang="en"><meta charset="utf-8">',
-    '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    '<title>Toolshop PR test report</title>',
-    '<style>body{font:1rem/1.65 system-ui;margin:2rem auto;padding:0 1rem;max-width:44rem;color-scheme:light dark}</style>',
-    '<h1>Toolshop PR test report</h1><ul>', ...rows, '</ul></html>',
-  ].join('\n'));
+  writeFileSync(
+    join(runDir, 'index.html'),
+    [
+      '<!doctype html><html lang="en"><meta charset="utf-8">',
+      '<meta name="viewport" content="width=device-width, initial-scale=1">',
+      '<title>Toolshop PR test report</title>',
+      '<style>body{font:1rem/1.65 system-ui;margin:2rem auto;padding:0 1rem;max-width:44rem;color-scheme:light dark}</style>',
+      '<h1>Toolshop PR test report</h1><ul>',
+      ...rows,
+      '</ul></html>',
+    ].join('\n'),
+  );
 }
 
 function finishReport(id, runDir, reports, combined) {
@@ -113,9 +118,8 @@ function finishReport(id, runDir, reports, combined) {
 
 function main(name, args) {
   const combined = name === 'pr-gate';
-  const discovery = combined || name !== 'bdd'
-    ? args.includes('--list')
-    : args.includes('--dry-run') || args.includes('-d');
+  const discovery =
+    combined || name !== 'bdd' ? args.includes('--list') : args.includes('--dry-run') || args.includes('-d');
   const track = !isCI() && (combined || !discovery);
   const id = randomUUID();
   let runDir;

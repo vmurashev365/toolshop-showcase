@@ -85,7 +85,11 @@ export class CheckoutWizardPage extends BasePage {
     await expect(row.getByTestId('product-quantity'), `Cart quantity for "${productName}"`).toHaveValue(
       String(expected.quantity),
     );
-    await expectUsdText(row.getByTestId('product-price'), `Cart unit price for ${productName}`, expected.unitPriceCents);
+    await expectUsdText(
+      row.getByTestId('product-price'),
+      `Cart unit price for ${productName}`,
+      expected.unitPriceCents,
+    );
     await expectUsdText(row.getByTestId('line-price'), `Cart line total for ${productName}`, expected.lineTotalCents);
   }
 
@@ -173,7 +177,9 @@ export class CheckoutWizardPage extends BasePage {
    * wait for the street to be populated first.
    */
   async completeBillingAddress(houseNumber = '1'): Promise<void> {
-    await expect(this.streetInput, 'Billing address should be pre-filled from the customer profile').not.toHaveValue('');
+    await expect(this.streetInput, 'Billing address should be pre-filled from the customer profile').not.toHaveValue(
+      '',
+    );
     if (!(await this.houseNumberInput.inputValue())) {
       await this.houseNumberInput.fill(houseNumber);
     }

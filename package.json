@@ -21,9 +21,11 @@
     "report:open": "node scripts/report-open.js",
     "test:report-opening": "node --test tests/integration/report-opening.test.js",
     "clean": "node -e \"const { rmSync } = require('node:fs'); for (const dir of ['reports', 'playwright-report', 'test-results', 'screenshots', 'videos', 'har']) rmSync(dir, { recursive: true, force: true });\"",
+    "format:check": "prettier --check \"**/*.{js,cjs,mjs,ts,json,yml,yaml}\"",
+    "format:write": "prettier --write \"**/*.{js,cjs,mjs,ts,json,yml,yaml}\"",
     "lint": "eslint playwright.config.ts scripts src tests",
     "test:unit": "node --import tsx --test tests/unit/*.test.ts",
-    "check:static": "npm run lint && npm run typecheck && npm run test:unit && npm run bdd:dry && npm run pw:list",
+    "check:static": "npm run format:check && npm run lint && npm run typecheck && npm run test:unit && npm run bdd:dry && npm run pw:list && npm run test:report-opening",
     "check:local": "node --import tsx scripts/check-local-toolshop.ts"
   },
   "devDependencies": {
@@ -34,6 +36,7 @@
     "cross-env": "^10.0.0",
     "eslint": "10.15.0",
     "eslint-plugin-playwright": "2.12.2",
+    "prettier": "3.10.1",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
     "typescript-eslint": "8.73.0",

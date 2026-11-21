@@ -44,6 +44,8 @@ Test strategy and release gate criteria: [test_documentation/01-test-strategy.md
 
 Playwright 1.65 · TypeScript 7 · Cucumber 13 (Gherkin) · `@axe-core/playwright` · Node.js 24 · GitHub Actions · GitHub Pages
 
+`typescript-eslint` uses the TypeScript 6 compiler API for type-aware rules through `projectService`. The `typescript-native` npm alias installs TypeScript 7 alongside it so `npm run typecheck` can use the native compiler.
+
 ```text
 src/
   api/          Typed APIRequestContext clients (Auth, Products, Cart, Invoices) + DB re-seed guard
@@ -77,7 +79,17 @@ The startup script uses the Sprint 5 commit in [`scripts/toolshop-revision.txt`]
 
 The default `TARGET_ENV` is `local` (UI `http://localhost:4200`, API `http://localhost:8091`). Set `UI_BASE_URL` and `API_BASE_URL` to override the endpoints. Local overrides must use loopback hosts. Set `TARGET_ENV=live` explicitly for the shared sandbox, or `TARGET_ENV=with-bugs` for the hosted training variant. Unknown target names fail immediately.
 
-`npm run check:static` runs ESLint, native TypeScript 7 typechecking, Node unit tests, Cucumber dry-run, and Playwright discovery. ESLint's typed rules use the TypeScript 6 compiler API. Run `npm run test:api`, `npm run test:bdd`, `npm run test:mobile`, or `npm run test:ux` individually against a ready local stack. For Cucumber, optional variables include `BROWSER`, `HEADED`, `TIMEOUT` (milliseconds), `PARALLEL`, and `TAGS`.
+To keep local overrides in a file, copy [`.env.example`](.env.example) to `.env` and edit it. Load the values in Bash or Git Bash before running npm commands in that shell.
+
+```sh
+set -a
+. ./.env
+set +a
+```
+
+CI runs `npm run check:static` on pushes to the main branches and on pull requests. It checks formatting with Prettier, runs ESLint, typechecks with native TypeScript, runs unit tests, verifies Cucumber and Playwright test discovery, and exercises report opening. Use `npm run format:write` to format JavaScript, TypeScript, and JSON/YAML configuration files.
+
+Run `npm run test:api`, `npm run test:bdd`, `npm run test:mobile`, or `npm run test:ux` individually against a ready local stack. For Cucumber, optional variables include `BROWSER`, `HEADED`, `TIMEOUT` (milliseconds), `PARALLEL`, and `TAGS`.
 
 If a BDD step reports `ECONNREFUSED` on port 8091, run `npm run check:local` to check the storefront and seeded catalog API. For an existing stack, resume its containers from the QA checkout, then run the tests once the readiness check passes. Use the checkout path you passed to the startup script.
 

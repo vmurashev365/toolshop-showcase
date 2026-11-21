@@ -26,9 +26,15 @@ export function assertUsdTextEquals(field: string, expectedCents: number, actual
   return actualCents;
 }
 
-export function assertApiAmountEquals(field: string, expectedCents: number, actualDollars: number | null | undefined): number {
+export function assertApiAmountEquals(
+  field: string,
+  expectedCents: number,
+  actualDollars: number | null | undefined,
+): number {
   if (typeof actualDollars !== 'number' || !Number.isFinite(actualDollars)) {
-    throw new DomainAssertionError(`${field}: expected ${formatUsd(expectedCents)}, actual ${JSON.stringify(actualDollars)}.`);
+    throw new DomainAssertionError(
+      `${field}: expected ${formatUsd(expectedCents)}, actual ${JSON.stringify(actualDollars)}.`,
+    );
   }
   assertExactCents(field, actualDollars, expectedCents);
   const actualCents = dollarsToCents(actualDollars);
@@ -41,9 +47,15 @@ export function assertApiAmountEquals(field: string, expectedCents: number, actu
 /**
  * Checks for a sub-cent remainder, allowing binary representation noise in ordinary cents.
  */
-export function assertExactCents(field: string, actualDollars: number | null | undefined, expectedCents?: number): void {
+export function assertExactCents(
+  field: string,
+  actualDollars: number | null | undefined,
+  expectedCents?: number,
+): void {
   if (typeof actualDollars !== 'number' || !Number.isFinite(actualDollars)) {
-    throw new DomainAssertionError(`${field}: expected a finite amount in whole cents, actual ${JSON.stringify(actualDollars)}.`);
+    throw new DomainAssertionError(
+      `${field}: expected a finite amount in whole cents, actual ${JSON.stringify(actualDollars)}.`,
+    );
   }
   const scaled = actualDollars * 100;
   if (Math.abs(scaled - Math.round(scaled)) >= 1e-6) {

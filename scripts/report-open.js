@@ -54,9 +54,18 @@ function hasDesktop() {
   if (process.env.TOOLSHOP_REPORT_OPENER) return true;
   const options = { stdio: 'ignore', timeout: 3000, windowsHide: true };
   if (process.platform === 'win32') {
-    return spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
-      'if ([Environment]::UserInteractive -and (Get-Process -Id $PID).SessionId -gt 0) { exit 0 }; exit 1',
-    ], options).status === 0;
+    return (
+      spawnSync(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          'if ([Environment]::UserInteractive -and (Get-Process -Id $PID).SessionId -gt 0) { exit 0 }; exit 1',
+        ],
+        options,
+      ).status === 0
+    );
   }
   if (process.platform === 'darwin') {
     return spawnSync('launchctl', ['print', 'gui/' + process.getuid()], options).status === 0;
@@ -69,7 +78,12 @@ async function serve(dir) {
   const { serveFolder } = require('playwright-core/lib/coreBundle').utils;
   const server = serveFolder(dir);
   await server.start({ host: '127.0.0.1', port: 0 });
-  const idle = setTimeout(() => { server.stop(); }, 30 * 60 * 1000).unref();
+  const idle = setTimeout(
+    () => {
+      server.stop();
+    },
+    30 * 60 * 1000,
+  ).unref();
   server.server().on('request', () => idle.refresh());
   process.send(server.urlPrefix('human-readable'));
 }
@@ -111,7 +125,12 @@ function launch(url, serverPid) {
     args = [resolve(override), url, String(serverPid)];
   } else if (process.platform === 'win32') {
     executable = 'powershell.exe';
-    args = ['-NoProfile', '-NonInteractive', '-Command', 'Start-Process -FilePath $env:TOOLSHOP_REPORT_URL -ErrorAction Stop'];
+    args = [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      'Start-Process -FilePath $env:TOOLSHOP_REPORT_URL -ErrorAction Stop',
+    ];
   } else {
     executable = process.platform === 'darwin' ? 'open' : 'xdg-open';
     args = [url];
@@ -162,7 +181,7 @@ async function openReport(id) {
 
 if (require.main === module) {
   const [, , flag, value] = process.argv;
-  const action = flag === '--serve' ? serve(value) : openReport(flag === '--run' ? value ?? '' : undefined);
+  const action = flag === '--serve' ? serve(value) : openReport(flag === '--run' ? (value ?? '') : undefined);
   action.catch((error) => {
     console.error(error.message);
     process.exitCode = 1;

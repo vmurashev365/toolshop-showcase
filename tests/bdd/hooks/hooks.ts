@@ -1,12 +1,4 @@
-import {
-  After,
-  AfterAll,
-  AfterStep,
-  Before,
-  BeforeStep,
-  Status,
-  setDefaultTimeout,
-} from '@cucumber/cucumber';
+import { After, AfterAll, AfterStep, Before, BeforeStep, Status, setDefaultTimeout } from '@cucumber/cucumber';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ToolshopWorld, closeWorkerBrowser } from './World';

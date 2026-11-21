@@ -26,9 +26,11 @@ export class CatalogPage extends BasePage {
   }
 
   cardByName(productName: string): Locator {
-    return this.productCards.filter({
-      has: this.page.getByTestId('product-name').filter({ hasText: productName }),
-    }).first();
+    return this.productCards
+      .filter({
+        has: this.page.getByTestId('product-name').filter({ hasText: productName }),
+      })
+      .first();
   }
 
   async expectCardPrice(productName: string, expectedCents: number): Promise<void> {

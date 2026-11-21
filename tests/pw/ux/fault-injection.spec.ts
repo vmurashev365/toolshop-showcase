@@ -23,9 +23,10 @@ test.describe('Network Fault Injection & Assertion Controls', () => {
     await checkoutPage.expectRowCount(1);
 
     const unitPrice = checkoutPage.row(product.name).getByTestId('product-price');
-    await expect(unitPrice, 'The tampered price must actually reach the UI for this control to mean anything').toHaveText(
-      formatUsd(dollarsToCents(tamperedPrice)),
-    );
+    await expect(
+      unitPrice,
+      'The tampered price must actually reach the UI for this control to mean anything',
+    ).toHaveText(formatUsd(dollarsToCents(tamperedPrice)));
 
     const expectedMessage = new RegExp(
       `Cart unit price for .*: expected \\${formatUsd(expectedCents)}, actual \\$0\\.01\\.`,

@@ -18,7 +18,7 @@ async function checkLocalToolshop(): Promise<void> {
     throw new Error('UI readiness at ' + uiBaseUrl + ' returned HTTP ' + ui.status + ' or non-HTML content.');
   }
   if (api.status !== 200) throw new Error('Catalog API readiness returned HTTP ' + api.status + '.');
-  const { data } = await api.json() as { data?: unknown };
+  const { data } = (await api.json()) as { data?: unknown };
   if (!Array.isArray(data) || data.length === 0) throw new Error('Catalog API did not return seeded products.');
 }
 

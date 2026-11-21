@@ -62,8 +62,9 @@ export class ProductsApi {
 
   async findInStockRetailProduct(): Promise<Product> {
     const products = await this.fetchCatalogSample(3);
-    const match = products.find((p) => p.in_stock && !p.is_rental && !p.is_location_offer)
-      ?? products.find((p) => p.in_stock && !p.is_rental);
+    const match =
+      products.find((p) => p.in_stock && !p.is_rental && !p.is_location_offer) ??
+      products.find((p) => p.in_stock && !p.is_rental);
     if (!match) throw new Error('Catalog has no in-stock retail product on pages 1..3.');
     return match;
   }
@@ -93,8 +94,9 @@ export class ProductsApi {
 
   async findNonEcoRetailProduct(): Promise<Product> {
     const products = await this.fetchCatalogSample(5);
-    const match = products.find((p) => p.in_stock && !p.is_rental && !p.is_eco_friendly && !p.is_location_offer)
-      ?? products.find((p) => p.in_stock && !p.is_rental && !p.is_eco_friendly);
+    const match =
+      products.find((p) => p.in_stock && !p.is_rental && !p.is_eco_friendly && !p.is_location_offer) ??
+      products.find((p) => p.in_stock && !p.is_rental && !p.is_eco_friendly);
     if (!match) throw new Error('Catalog has no in-stock non-eco retail product on pages 1..5.');
     return match;
   }

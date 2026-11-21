@@ -1,7 +1,10 @@
 import { isAssertionError } from './assertions';
 
 /** An assertion failure reproduces the finding. Environment errors propagate. */
-export async function observeKnownDiscrepancy(defectId: string, assertion: () => void | Promise<void>): Promise<string> {
+export async function observeKnownDiscrepancy(
+  defectId: string,
+  assertion: () => void | Promise<void>,
+): Promise<string> {
   try {
     await assertion();
   } catch (error) {

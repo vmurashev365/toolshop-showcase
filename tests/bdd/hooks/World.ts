@@ -101,7 +101,9 @@ export class ToolshopWorld extends World {
   /** Storefront page objects; fails clearly when a UI step is used in an @api (browserless) scenario. */
   ui(): StorefrontUi {
     if (!this.storefront) {
-      throw new Error('This step drives the storefront UI, but no browser was started: remove the @api tag from the scenario.');
+      throw new Error(
+        'This step drives the storefront UI, but no browser was started: remove the @api tag from the scenario.',
+      );
     }
     return this.storefront;
   }

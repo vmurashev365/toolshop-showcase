@@ -1,6 +1,16 @@
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
-const { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, symlinkSync, unlinkSync, writeFileSync } = require('node:fs');
+const {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} = require('node:fs');
 const { rm } = require('node:fs/promises');
 const { dirname, join, resolve } = require('node:path');
 const { test } = require('node:test');
@@ -18,7 +28,8 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
   const runLog = join(fixture, 'ran.txt');
   const baseEnv = { ...process.env };
   for (const name of Object.keys(baseEnv)) {
-    if (/^(CI|GITHUB_ACTIONS|REPORT_DIR|PW_REPORT_DIR|PLAYWRIGHT_HTML_.*|TARGET_ENV|TAGS|PARALLEL)$/i.test(name)) delete baseEnv[name];
+    if (/^(CI|GITHUB_ACTIONS|REPORT_DIR|PW_REPORT_DIR|PLAYWRIGHT_HTML_.*|TARGET_ENV|TAGS|PARALLEL)$/i.test(name))
+      delete baseEnv[name];
   }
   Object.assign(baseEnv, {
     TARGET_ENV: 'local',
@@ -40,9 +51,17 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
     return readFileSync(openLog, 'utf8').trim().split('\n').map(JSON.parse);
   }
   function npmRun(script, args = [], extraEnv = {}) {
-    const result = spawnSync(process.execPath, [npm, 'run', '--silent', script, ...(args.length ? ['--', ...args] : [])], {
-      cwd: fixture, env: { ...baseEnv, ...extraEnv }, encoding: 'utf8', timeout: 35_000, windowsHide: true,
-    });
+    const result = spawnSync(
+      process.execPath,
+      [npm, 'run', '--silent', script, ...(args.length ? ['--', ...args] : [])],
+      {
+        cwd: fixture,
+        env: { ...baseEnv, ...extraEnv },
+        encoding: 'utf8',
+        timeout: 35_000,
+        windowsHide: true,
+      },
+    );
     if (result.error) throw result.error;
     return { status: result.status, output: result.stdout + result.stderr };
   }
@@ -54,18 +73,24 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
   function completedRuns() {
     const dir = join(fixture, 'reports', 'runs');
     if (!existsSync(dir)) return [];
-    return readdirSync(dir).flatMap((id) => {
-      const path = join(dir, id);
-      const manifest = join(path, 'run.json');
-      if (!existsSync(manifest)) return [];
-      const { entry } = JSON.parse(readFileSync(manifest, 'utf8'));
-      return [{ path, entry, completed: statSync(manifest, { bigint: true }).mtimeNs }];
-    }).sort((a, b) => a.completed < b.completed ? 1 : -1);
+    return readdirSync(dir)
+      .flatMap((id) => {
+        const path = join(dir, id);
+        const manifest = join(path, 'run.json');
+        if (!existsSync(manifest)) return [];
+        const { entry } = JSON.parse(readFileSync(manifest, 'utf8'));
+        return [{ path, entry, completed: statSync(manifest, { bigint: true }).mtimeNs }];
+      })
+      .sort((a, b) => (a.completed < b.completed ? 1 : -1));
   }
 
   t.after(async () => {
     for (const pid of new Set(opens().map((entry) => entry.pid))) {
-      try { process.kill(pid); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+      try {
+        process.kill(pid);
+      } catch (error) {
+        if (error.code !== 'ESRCH') throw error;
+      }
     }
     assert.equal(dirname(resolve(fixture)), fixtureRoot);
     // Remove the junction itself before recursively deleting the fixture on Windows.
@@ -73,8 +98,14 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
     await rm(fixture, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   });
 
-  for (const path of ['scripts/run-tests.js', 'scripts/report-open.js', 'scripts/clean-report-dir.js',
-    'cucumber.js', 'tests/bdd/hooks/terminalFormatter.ts']) copy(path);
+  for (const path of [
+    'scripts/run-tests.js',
+    'scripts/report-open.js',
+    'scripts/clean-report-dir.js',
+    'cucumber.js',
+    'tests/bdd/hooks/terminalFormatter.ts',
+  ])
+    copy(path);
   symlinkSync(join(source, 'node_modules'), modulesLink, 'junction');
 
   const pkg = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'));
@@ -82,59 +113,77 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
   pkg.scripts['check:local'] = 'node -e "process.exit(Number(process.env.FIXTURE_READINESS_EXIT || 0))"';
   pkg.scripts['prereport:open'] = 'node fixture-race.js';
   put('package.json', JSON.stringify(pkg));
-  put('browser stub.js', [
-    'const { appendFileSync } = require("node:fs");',
-    'appendFileSync(process.env.FIXTURE_OPEN_LOG, JSON.stringify({ url: process.argv[2], pid: Number(process.argv[3]) }) + "\\n");',
-    'process.exitCode = process.env.FIXTURE_OPEN_FAIL ? 23 : 0;',
-  ].join('\n'));
-  put('fixture-race.js', [
-    'if (process.env.FIXTURE_NEWER_HTML) {',
-    '  const { mkdirSync, writeFileSync } = require("node:fs");',
-    '  const dir = "reports/runs/00000000-0000-0000-0000-000000000001";',
-    '  mkdirSync(dir, { recursive: true });',
-    '  writeFileSync(dir + "/index.html", "<title>Later invocation</title>");',
-    '  writeFileSync(dir + "/run.json", JSON.stringify({ entry: "index.html" }));',
-    '}',
-  ].join('\n'));
-  put('tests/bdd/features/report.feature', '@smoke\nFeature: Report fixture\n  Scenario: Cucumber proof\n    Given a completed step\n');
-  put('tests/bdd/step-definitions/report.ts', [
-    "import { Given } from '@cucumber/cucumber';",
-    "import { appendFileSync } from 'node:fs';",
-    "Given('a completed step', function () {",
-    "  appendFileSync(process.env.FIXTURE_RUN_LOG!, 'bdd\\n');",
-    "  if (process.env.FIXTURE_BDD_FAIL) throw new Error('Controlled BDD failure');",
-    "});",
-  ].join('\n'));
+  put(
+    'browser stub.js',
+    [
+      'const { appendFileSync } = require("node:fs");',
+      'appendFileSync(process.env.FIXTURE_OPEN_LOG, JSON.stringify({ url: process.argv[2], pid: Number(process.argv[3]) }) + "\\n");',
+      'process.exitCode = process.env.FIXTURE_OPEN_FAIL ? 23 : 0;',
+    ].join('\n'),
+  );
+  put(
+    'fixture-race.js',
+    [
+      'if (process.env.FIXTURE_NEWER_HTML) {',
+      '  const { mkdirSync, writeFileSync } = require("node:fs");',
+      '  const dir = "reports/runs/00000000-0000-0000-0000-000000000001";',
+      '  mkdirSync(dir, { recursive: true });',
+      '  writeFileSync(dir + "/index.html", "<title>Later invocation</title>");',
+      '  writeFileSync(dir + "/run.json", JSON.stringify({ entry: "index.html" }));',
+      '}',
+    ].join('\n'),
+  );
+  put(
+    'tests/bdd/features/report.feature',
+    '@smoke\nFeature: Report fixture\n  Scenario: Cucumber proof\n    Given a completed step\n',
+  );
+  put(
+    'tests/bdd/step-definitions/report.ts',
+    [
+      "import { Given } from '@cucumber/cucumber';",
+      "import { appendFileSync } from 'node:fs';",
+      "Given('a completed step', function () {",
+      "  appendFileSync(process.env.FIXTURE_RUN_LOG!, 'bdd\\n');",
+      "  if (process.env.FIXTURE_BDD_FAIL) throw new Error('Controlled BDD failure');",
+      '});',
+    ].join('\n'),
+  );
   put('tests/bdd/hooks/hooks.ts', 'export {};\n');
   put('tests/bdd/hooks/World.ts', 'export {};\n');
 
-  put('playwright.config.js', [
-    "const { join } = require('node:path');",
-    "const { defineConfig } = require('@playwright/test');",
-    'const dir = process.env.PW_REPORT_DIR || "reports/playwright";',
-    'module.exports = defineConfig({ testDir:"tests/pw", workers:1, outputDir:join(dir,"artifacts"),',
-    '  reporter:[["list"], ["html",{outputFolder:join(dir,"html"), open:"never"}], ["json",{outputFile:join(dir,"results.json")}]],',
-    '  projects: [',
-    '    {name:"api-margin-security",testMatch:"**/api.spec.js"},',
-    '    {name:"known-discrepancies-api",testMatch:"**/api.spec.js"},',
-    '    {name:"mobile-webkit",testMatch:"**/mobile.spec.js"},',
-    '    {name:"mobile-chromium",testMatch:"**/mobile.spec.js"},',
-    '    {name:"ux-guards",testMatch:"**/ux.spec.js"},',
-    '  ],',
-    '});',
-  ].join('\n'));
-  for (const name of ['api', 'mobile', 'ux']) {
-    put('tests/pw/' + name + '.spec.js', [
-      'const { test, expect } = require("@playwright/test");',
-      'const { appendFileSync, writeFileSync } = require("node:fs");',
-      'test("' + name + ' fixture", async ({}, info) => {',
-      '  appendFileSync(process.env.FIXTURE_RUN_LOG, info.project.name + "\\n");',
-      '  const proof = info.outputPath("proof.txt");',
-      '  writeFileSync(proof, "fixture attachment");',
-      '  await info.attach("proof", { path: proof, contentType: "text/plain" });',
-      '  expect(info.project.name).not.toBe(process.env.FIXTURE_PW_FAIL);',
+  put(
+    'playwright.config.js',
+    [
+      "const { join } = require('node:path');",
+      "const { defineConfig } = require('@playwright/test');",
+      'const dir = process.env.PW_REPORT_DIR || "reports/playwright";',
+      'module.exports = defineConfig({ testDir:"tests/pw", workers:1, outputDir:join(dir,"artifacts"),',
+      '  reporter:[["list"], ["html",{outputFolder:join(dir,"html"), open:"never"}], ["json",{outputFile:join(dir,"results.json")}]],',
+      '  projects: [',
+      '    {name:"api-margin-security",testMatch:"**/api.spec.js"},',
+      '    {name:"known-discrepancies-api",testMatch:"**/api.spec.js"},',
+      '    {name:"mobile-webkit",testMatch:"**/mobile.spec.js"},',
+      '    {name:"mobile-chromium",testMatch:"**/mobile.spec.js"},',
+      '    {name:"ux-guards",testMatch:"**/ux.spec.js"},',
+      '  ],',
       '});',
-    ].join('\n'));
+    ].join('\n'),
+  );
+  for (const name of ['api', 'mobile', 'ux']) {
+    put(
+      'tests/pw/' + name + '.spec.js',
+      [
+        'const { test, expect } = require("@playwright/test");',
+        'const { appendFileSync, writeFileSync } = require("node:fs");',
+        'test("' + name + ' fixture", async ({}, info) => {',
+        '  appendFileSync(process.env.FIXTURE_RUN_LOG, info.project.name + "\\n");',
+        '  const proof = info.outputPath("proof.txt");',
+        '  writeFileSync(proof, "fixture attachment");',
+        '  await info.attach("proof", { path: proof, contentType: "text/plain" });',
+        '  expect(info.project.name).not.toBe(process.env.FIXTURE_PW_FAIL);',
+        '});',
+      ].join('\n'),
+    );
   }
 
   put('reports/pw-mobile/html/index.html', '<title>Old report</title>');
@@ -173,7 +222,9 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
   await t.test('failing Playwright opens one current report with attachments over HTTP', async () => {
     const output = join(fixture, 'custom Playwright output');
     const result = npmRun('test:mobile', ['--trace=on'], {
-      FIXTURE_PW_FAIL: 'mobile-webkit', PLAYWRIGHT_HTML_OUTPUT_DIR: output, PW_REPORT_DIR: 'custom Playwright results',
+      FIXTURE_PW_FAIL: 'mobile-webkit',
+      PLAYWRIGHT_HTML_OUTPUT_DIR: output,
+      PW_REPORT_DIR: 'custom Playwright results',
     });
     assert.equal(result.status, 1, result.output);
     assert.match(result.output, /1 failed/);
@@ -199,7 +250,12 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
     const opened = opens().at(-1);
     const index = await html(opened.url);
     const hrefs = [...index.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
-    assert.deepEqual(hrefs, ['pw-api/html/index.html', 'bdd/cucumber-report.html', 'pw-mobile/html/index.html', 'pw-ux/html/index.html']);
+    assert.deepEqual(hrefs, [
+      'pw-api/html/index.html',
+      'bdd/cucumber-report.html',
+      'pw-mobile/html/index.html',
+      'pw-ux/html/index.html',
+    ]);
     for (const href of hrefs) assert.match(await html(new URL(href, opened.url)), /Cucumber|Playwright Test Report/);
   });
 
@@ -236,8 +292,12 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
       assert.equal(opens().length, 5);
     }
     assert.equal(completedRuns()[0].path, latest.path);
-    for (const path of ['reports/bdd/cucumber-report.html', 'reports/pw-api/html/index.html',
-      'reports/pw-api/results.json', 'reports/bdd-dry-run/cucumber-report.html']) {
+    for (const path of [
+      'reports/bdd/cucumber-report.html',
+      'reports/pw-api/html/index.html',
+      'reports/pw-api/results.json',
+      'reports/bdd-dry-run/cucumber-report.html',
+    ]) {
       assert.ok(existsSync(join(fixture, path)), path);
     }
   });

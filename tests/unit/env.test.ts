@@ -5,7 +5,9 @@ import { resolveEnv } from '../../src/config/env';
 test('target resolution defaults to loopback and rejects typos and remote local overrides', (context) => {
   const originalEnv = process.env;
   process.env = {};
-  context.after(() => { process.env = originalEnv; });
+  context.after(() => {
+    process.env = originalEnv;
+  });
   assert.equal(resolveEnv().target, 'local');
   assert.equal(resolveEnv().apiBaseUrl, 'http://localhost:8091');
   assert.equal(resolveEnv('live').target, 'live');

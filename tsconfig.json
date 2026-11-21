@@ -11,17 +11,6 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": [
-    "playwright.config.ts",
-    "scripts/**/*.ts",
-    "src/**/*",
-    "tests/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "reports",
-    "playwright-report",
-    "test-results"
-  ]
+  "include": ["playwright.config.ts", "scripts/**/*.ts", "src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist", "reports", "playwright-report", "test-results"]
 }

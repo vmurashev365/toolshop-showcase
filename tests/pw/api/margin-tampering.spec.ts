@@ -19,7 +19,9 @@ test.describe('Margin & Pricing Integrity (API) @blocker-margin', () => {
     const expectQuantityRejected = (res: ApiResult<unknown>, label: string) => {
       assertCatalogProductStillKnown(res, product.name);
       expect(res.status, label).toBe(422);
-      expect((res.body as { errors?: Record<string, unknown> })?.errors, `${label}: validation errors`).toHaveProperty('quantity');
+      expect((res.body as { errors?: Record<string, unknown> })?.errors, `${label}: validation errors`).toHaveProperty(
+        'quantity',
+      );
     };
 
     for (const invalidQty of [0, -2, 1.5]) {
@@ -95,7 +97,8 @@ test.describe('Margin & Pricing Integrity (API) @blocker-margin', () => {
     const created = await cartApi.create();
     expect(created.status, 'FIND-02 inconclusive: the Cart API did not create a fresh cart').toBe(201);
 
-    const addRes = await cartApi.addItem(created.body.id, { product_id: outOfStock.id, quantity: 1 })
+    const addRes = await cartApi
+      .addItem(created.body.id, { product_id: outOfStock.id, quantity: 1 })
       .catch((error: unknown) => {
         throw new Error('FIND-02 inconclusive: the Cart API request failed.', { cause: error });
       });

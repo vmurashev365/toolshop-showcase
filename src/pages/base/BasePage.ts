@@ -59,7 +59,8 @@ export class BasePage {
         [...document.querySelectorAll('img')]
           .filter((img) => {
             const rect = img.getBoundingClientRect();
-            const inViewport = rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
+            const inViewport =
+              rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth;
             return rect.width > 0 && rect.height > 0 && inViewport;
           })
           .map((img) => ({

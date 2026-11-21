@@ -16,10 +16,13 @@ export default defineConfig([
     files: ['tests/unit/**/*.test.ts'],
     rules: {
       // node:test owns the promise returned when each top-level test registers.
-      '@typescript-eslint/no-floating-promises': ['error', {
-        ignoreVoid: false,
-        allowForKnownSafeCalls: [{ from: 'package', package: '@types/node', name: 'test' }],
-      }],
+      '@typescript-eslint/no-floating-promises': [
+        'error',
+        {
+          ignoreVoid: false,
+          allowForKnownSafeCalls: [{ from: 'package', package: '@types/node', name: 'test' }],
+        },
+      ],
     },
   },
   {
