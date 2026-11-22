@@ -5,9 +5,23 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
 import type { ToolshopWorld } from '../hooks/World';
-import { applyDiscountHalfUp, dollarsToCents } from '../../../src/domain/money';
+import type { Product } from '../../../src/api/ProductsApi';
+import { applyDiscountHalfUp, dollarsToCents, formatUsd } from '../../../src/domain/money';
 
 const COMBINATION_DISCOUNT_LABEL = 'Discount (15%)';
+
+const catalogPrice = (product: Product): string => formatUsd(dollarsToCents(product.price));
+
+/** Logs and returns the retail-only cart total that the step's assertions expect. */
+function expectedRetailTotal(world: ToolshopWorld): number {
+  const product = world.need('selectedProduct');
+  const totalCents = dollarsToCents(product.price) * world.selectedQuantity;
+  world.log(
+    `Expected: no combination discount; cart total ${formatUsd(totalCents)} ` +
+      `(${world.selectedQuantity} × ${catalogPrice(product)} ${product.name})`,
+  );
+  return totalCents;
+}
 
 async function openProductAndAdd(world: ToolshopWorld, productId: string, quantity: number): Promise<void> {
   const { productDetails } = world.ui();
@@ -17,6 +31,7 @@ async function openProductAndAdd(world: ToolshopWorld, productId: string, quanti
 
 Given('a guest shopper opens an in-stock retail product page in the storefront', async function (this: ToolshopWorld) {
   this.selectedProduct = await this.productsApi.findNonEcoRetailProduct();
+  this.log(`Retail product: ${this.selectedProduct.name}, catalog price ${catalogPrice(this.selectedProduct)}`);
   await this.ui().productDetails.open(this.selectedProduct.id);
 });
 
@@ -33,12 +48,14 @@ Given(
   async function (this: ToolshopWorld, qty: number) {
     this.selectedProduct = await this.productsApi.findNonEcoRetailProduct();
     this.selectedQuantity = qty;
+    this.log(`Retail product: ${this.selectedProduct.name}, ${catalogPrice(this.selectedProduct)} × ${qty}`);
     await openProductAndAdd(this, this.selectedProduct.id, qty);
   },
 );
 
 Given('the shopper adds a rental item in the storefront', async function (this: ToolshopWorld) {
   this.selectedRental = await this.productsApi.findRentalProduct();
+  this.log(`Rental item: ${this.selectedRental.name}, ${catalogPrice(this.selectedRental)} × 1`);
   await openProductAndAdd(this, this.selectedRental.id, 1);
 });
 
@@ -70,6 +87,10 @@ Then(
     const { checkout } = this.ui();
     const product = this.need('selectedProduct');
     const unitCents = dollarsToCents(product.price);
+    this.log(
+      `Expected: ${product.name} ${qty} × ${formatUsd(unitCents)} = ${formatUsd(unitCents * qty)}; ` +
+        `cart total ${formatUsd(unitCents * qty)}; cart badge ${qty}`,
+    );
 
     await checkout.expectRowCount(1);
     await checkout.expectLineItem(product.name, {
@@ -88,10 +109,16 @@ Then(
     const { checkout } = this.ui();
     await checkout.expectSummaryToContain(`Discount (${discountPct}%)`);
 
-    const subtotalCents =
-      dollarsToCents(this.need('selectedProduct').price) * this.selectedQuantity +
-      dollarsToCents(this.need('selectedRental').price);
-    await checkout.expectCartTotal(applyDiscountHalfUp(subtotalCents, discountPct), 'Mixed cart discounted total');
+    const product = this.need('selectedProduct');
+    const rental = this.need('selectedRental');
+    const subtotalCents = dollarsToCents(product.price) * this.selectedQuantity + dollarsToCents(rental.price);
+    const totalCents = applyDiscountHalfUp(subtotalCents, discountPct);
+    this.log(
+      `Expected: subtotal ${formatUsd(subtotalCents)} (${this.selectedQuantity} × ${catalogPrice(product)} ` +
+        `${product.name} + ${catalogPrice(rental)} ${rental.name}), ${discountPct}% discount ` +
+        `−${formatUsd(subtotalCents - totalCents)}, cart total ${formatUsd(totalCents)}`,
+    );
+    await checkout.expectCartTotal(totalCents, 'Mixed cart discounted total');
   },
 );
 
@@ -99,11 +126,9 @@ Then(
   'the storefront cart should no longer show a combination discount and total should match the retail line',
   async function (this: ToolshopWorld) {
     const { checkout } = this.ui();
+    const totalCents = expectedRetailTotal(this);
     await checkout.expectSummaryNotToContain(COMBINATION_DISCOUNT_LABEL);
-    await checkout.expectCartTotal(
-      dollarsToCents(this.need('selectedProduct').price) * this.selectedQuantity,
-      'Retail-only cart total',
-    );
+    await checkout.expectCartTotal(totalCents, 'Retail-only cart total');
   },
 );
 
@@ -111,10 +136,7 @@ Then(
   'the storefront cart should still show no combination discount and preserve the exact retail total',
   async function (this: ToolshopWorld) {
     const { checkout } = this.ui();
-    await checkout.expectCartTotal(
-      dollarsToCents(this.need('selectedProduct').price) * this.selectedQuantity,
-      'Reloaded retail cart total',
-    );
+    await checkout.expectCartTotal(expectedRetailTotal(this), 'Reloaded retail cart total');
     await checkout.expectSummaryNotToContain(COMBINATION_DISCOUNT_LABEL);
   },
 );

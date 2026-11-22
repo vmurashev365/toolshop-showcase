@@ -3,6 +3,7 @@ const { randomUUID } = require('node:crypto');
 const { cpSync, existsSync, mkdirSync, renameSync, writeFileSync } = require('node:fs');
 const { constants } = require('node:os');
 const { dirname, join, resolve } = require('node:path');
+const { cleanReportDir } = require('./clean-report-dir');
 const { isCI, isHtmlReport, runsDir } = require('./report-open');
 
 const root = resolve(__dirname, '..');
@@ -27,12 +28,24 @@ function runNpm(script, args = []) {
 
 // Keep explicit output overrides available at their requested paths, while the opener uses
 // only the isolated files. An overlapping run can replace a mirror without changing this report.
-function mirror(source, destination) {
-  if (!destination || !existsSync(source)) return;
-  try {
-    cpSync(source, resolve(root, destination), { recursive: true });
-  } catch (error) {
-    console.warn('Could not copy report to ' + destination + '. ' + error.message);
+// Every destination is cleared before any copy, as the suites clear their own output folders,
+// so evidence from an earlier run never sits next to this one. Clearing first keeps nested
+// destinations (for example the HTML folder inside the results folder) intact.
+function mirror(...pairs) {
+  const copies = pairs.filter(([source, destination]) => destination && existsSync(source));
+  for (const [, destination] of copies) {
+    try {
+      cleanReportDir(destination);
+    } catch (error) {
+      console.warn('Could not clear ' + destination + ' before copying the report. ' + error.message);
+    }
+  }
+  for (const [source, destination] of copies) {
+    try {
+      cpSync(source, resolve(root, destination), { recursive: true });
+    } catch (error) {
+      console.warn('Could not copy report to ' + destination + '. ' + error.message);
+    }
   }
 }
 
@@ -51,7 +64,7 @@ function runSuite(name, args, runDir) {
     }
     const cli = join(dirname(require.resolve('@cucumber/cucumber/package.json')), 'bin', 'cucumber.js');
     status = runNode([cli, ...args], env);
-    if (suiteDir) mirror(suiteDir, process.env.REPORT_DIR);
+    if (suiteDir) mirror([suiteDir, process.env.REPORT_DIR]);
     relativeHtml = suite.folder + '/cucumber-report.html';
   } else {
     if (suite.target) env.TARGET_ENV = suite.target;
@@ -60,8 +73,10 @@ function runSuite(name, args, runDir) {
     if (suiteDir) env.PLAYWRIGHT_HTML_OUTPUT_DIR = join(suiteDir, 'html');
     status = runNode([require.resolve('@playwright/test/cli'), 'test', ...suite.args, ...args], env);
     if (suiteDir) {
-      mirror(suiteDir, process.env.PW_REPORT_DIR);
-      mirror(join(suiteDir, 'html'), process.env.PLAYWRIGHT_HTML_OUTPUT_DIR || process.env.PLAYWRIGHT_HTML_REPORT);
+      mirror(
+        [suiteDir, process.env.PW_REPORT_DIR],
+        [join(suiteDir, 'html'), process.env.PLAYWRIGHT_HTML_OUTPUT_DIR || process.env.PLAYWRIGHT_HTML_REPORT],
+      );
     }
     relativeHtml = suite.folder + '/html/index.html';
   }

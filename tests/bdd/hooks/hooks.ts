@@ -1,6 +1,7 @@
 import { After, AfterAll, AfterStep, Before, BeforeStep, Status, setDefaultTimeout } from '@cucumber/cucumber';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { formatApiExchanges } from '../../../src/api/apiEvidence';
 import { ToolshopWorld, closeWorkerBrowser } from './World';
 
 const actionTimeout = Number(process.env.TIMEOUT) || 30_000;
@@ -36,6 +37,13 @@ After(async function (this: ToolshopWorld, { pickle, result, testCaseStartedId }
   const stem = `${pickle.name.replace(/[^a-zA-Z0-9]+/g, '-').slice(0, 60)}-${testCaseStartedId}`;
 
   try {
+    if (failed && this.apiExchanges.length > 0) {
+      this.attach(formatApiExchanges(this.apiExchanges), {
+        mediaType: 'application/json',
+        fileName: 'api-exchanges.json',
+      });
+    }
+
     if (failed && this.page && !this.page.isClosed()) {
       await mkdir(join(reportDir, 'screenshots'), { recursive: true });
       const img = await this.page.screenshot({ path: join(reportDir, 'screenshots', `${stem}.png`), fullPage: true });
@@ -46,7 +54,13 @@ After(async function (this: ToolshopWorld, { pickle, result, testCaseStartedId }
       await closeTraceGroup(this);
       if (failed) {
         await mkdir(join(reportDir, 'traces'), { recursive: true });
-        await this.context.tracing.stop({ path: join(reportDir, 'traces', `${stem}.zip`) });
+        // Relative to cucumber-report.html, which is written to the same report directory.
+        const trace = `traces/${stem}.zip`;
+        await this.context.tracing.stop({ path: join(reportDir, trace) });
+        this.log(
+          'Playwright trace of this attempt: open it with "npx playwright show-trace" or at trace.playwright.dev.',
+        );
+        this.link(trace);
       } else {
         await this.context.tracing.stop();
       }

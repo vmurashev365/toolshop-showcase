@@ -1,7 +1,22 @@
 # FIND-02 · Out-of-stock SKU blocked in UI, accepted by Cart API
 
 **Environment:** `https://practicesoftwaretesting.com` and `https://api.practicesoftwaretesting.com`, observed 2026-11-20.  
-**Evidence:** [Out-of-stock UI screenshot](../evidence/find-02-out-of-stock-ui.png) · [Captured Cart API response (JSON)](../evidence/find-02-cart-api-response.json) · [Automated check (`TC-API-004`)](../../tests/pw/api/margin-tampering.spec.ts#L91-L109)
+**Evidence:** [Out-of-stock UI screenshot](../evidence/find-02-out-of-stock-ui.png) · [Captured Cart API response (JSON)](../evidence/find-02-cart-api-response.json) · [Automated check (`TC-API-004`)](../../tests/pw/api/margin-tampering.spec.ts#L91-L109)  
+**Severity:** High ([scale](../01-test-strategy.md#6-severity-scale))  
+**Business impact:** Out-of-stock items can be ordered through direct API calls or a stale browser tab, which leads to overselling, cancellations, and refunds.
+
+## Reproduce
+
+```sh
+API=http://localhost:8091   # isolated stack
+# A retail product with "in_stock": false (Long Nose Pliers on page 1 of the seeded catalog)
+PRODUCT=$(curl -s "$API/products?page=1" | jq -r '[.data[] | select(.in_stock == false and .is_rental == false)][0].id')
+CART=$(curl -s -X POST "$API/carts" | jq -r .id)
+curl -s -X POST "$API/carts/$CART" -H 'Content-Type: application/json' -d "{\"product_id\":\"$PRODUCT\",\"quantity\":1}"
+# Observed: 200 {"result":"item added or updated"}
+curl -s "$API/carts/$CART" | jq '.cart_items[] | {name: .product.name, in_stock: .product.in_stock}'
+# Observed: {"name": "Long Nose Pliers", "in_stock": false}
+```
 
 ## Expected vs. observed behavior
 

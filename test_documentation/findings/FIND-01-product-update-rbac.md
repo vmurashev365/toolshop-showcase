@@ -1,7 +1,17 @@
 # FIND-01 · Missing auth contract on `PUT` / `PATCH /products/{productId}`
 
 **Environment:** `https://api.practicesoftwaretesting.com/docs` (OpenAPI spec) and upstream Sprint 5 source (`testsmith-io/practice-software-testing`), audited 2026-11-20.  
-**Evidence:** [OpenAPI excerpt (JSON)](../evidence/find-01-openapi-products.json) · [Automated check (`TC-SEC-003`)](../../tests/pw/api/security-rbac.spec.ts#L51-L66)
+**Evidence:** [OpenAPI excerpt (JSON)](../evidence/find-01-openapi-products.json) · [Automated check (`TC-SEC-003`)](../../tests/pw/api/security-rbac.spec.ts#L51-L66)  
+**Severity:** Critical ([scale](../01-test-strategy.md#6-severity-scale)), based on the API contract and source review. The suite never sends a `PUT`.  
+**Business impact:** Anyone could change catalog prices or product data without signing in, for example set a price to `$0.01` before checking out.
+
+## Reproduce (read-only)
+
+```sh
+API=http://localhost:8091   # isolated stack; public sandbox: https://api.practicesoftwaretesting.com
+curl -s "$API/docs" | jq '.paths["/products/{productId}"] | {put: .put.security, delete: .delete.security}'
+# Observed: {"put": null, "delete": [{"apiAuth": []}]}
+```
 
 ## What was actually checked (non-destructive)
 

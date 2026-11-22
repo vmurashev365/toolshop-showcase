@@ -11,7 +11,7 @@ import {
 } from '@playwright/test';
 import { World, setWorldConstructor, type IWorldOptions } from '@cucumber/cucumber';
 import { resolveEnv, type EnvConfig } from '../../../src/config/env';
-import { ApiClient } from '../../../src/api/ApiClient';
+import { ApiClient, type ApiExchange } from '../../../src/api/ApiClient';
 import { AuthApi, type AuthenticatedCustomer } from '../../../src/api/AuthApi';
 import { ProductsApi, type Product } from '../../../src/api/ProductsApi';
 import { CartApi } from '../../../src/api/CartApi';
@@ -23,6 +23,7 @@ import { CheckoutWizardPage } from '../../../src/pages/CheckoutWizardPage';
 
 let sharedWorkerBrowser: Browser | undefined;
 let testIdConfigured = false;
+const MAX_API_EXCHANGES = 10;
 
 export async function ensureWorkerBrowser(browserName: string, headed: boolean): Promise<Browser> {
   if (!testIdConfigured) {
@@ -63,6 +64,8 @@ export class ToolshopWorld extends World {
   public productsApi!: ProductsApi;
   public cartApi!: CartApi;
   public invoicesApi!: InvoicesApi;
+  /** The latest API calls of this scenario, attached to the report when it fails. */
+  public readonly apiExchanges: ApiExchange[] = [];
 
   public context?: BrowserContext;
   public page?: Page;
@@ -120,7 +123,10 @@ export class ToolshopWorld extends World {
       baseURL: this.env.apiBaseUrl,
       extraHTTPHeaders: { Accept: 'application/json' },
     });
-    this.apiClient = new ApiClient(this.apiRequest, this.env.apiBaseUrl);
+    this.apiClient = new ApiClient(this.apiRequest, this.env.apiBaseUrl, (exchange) => {
+      this.apiExchanges.push(exchange);
+      if (this.apiExchanges.length > MAX_API_EXCHANGES) this.apiExchanges.shift();
+    });
     this.authApi = new AuthApi(this.apiClient);
     this.productsApi = new ProductsApi(this.apiClient);
     this.cartApi = new CartApi(this.apiClient);

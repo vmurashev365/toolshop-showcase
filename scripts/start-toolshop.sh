@@ -58,7 +58,8 @@ composer_env=()
 if [[ -n ${GITHUB_TOKEN:-} ]]; then
   composer_env=(-e "COMPOSER_AUTH={\"github-oauth\":{\"github.com\":\"$GITHUB_TOKEN\"}}")
 fi
-compose exec -T "${composer_env[@]}" laravel-api \
+# Bash before 4.4 (macOS /bin/bash 3.2) treats an empty "${array[@]}" as unbound under set -u.
+compose exec -T ${composer_env[@]+"${composer_env[@]}"} laravel-api \
   composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-req=ext-ffi
 compose exec -T laravel-api php artisan migrate:refresh --seed --force
 

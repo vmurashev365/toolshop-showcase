@@ -4,6 +4,7 @@ Feature: Guest Cart Reconciliation and Checkout Sign-In Continuity
   I want catalog prices to match the cart to the exact cent and my guest cart to survive sign-in
   So that I can complete checkout without losing items or seeing unexpected totals
 
+  @TC-BDD-001
   Scenario: Guest adds an in-stock item and retains exact cart totals after signing in at checkout
     Given a registered shopper exists
     And a guest shopper opens an in-stock retail product page in the storefront

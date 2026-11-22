@@ -34,6 +34,16 @@ test.describe('Mobile Money Path & Layout Hygiene @blocker-conversion', () => {
 
     await productDetailsPage.header.openCart();
     await checkoutPage.waitForCartLoaded();
+    await checkoutPage.expectRowCount(1);
+    await checkoutPage.expectLineItem(product.name, {
+      quantity: 1,
+      unitPriceCents: expectedCents,
+      lineTotalCents: expectedCents,
+    });
+    await checkoutPage.expectCartTotal(expectedCents, `Mobile cart total for ${product.name}`);
+
+    // Measure only once the cart row is rendered: the row and its remove control cause FIND-09,
+    // so an earlier reading would be 0px and falsely report the finding as fixed.
     const linuxWebKit = test.info().project.name === 'mobile-webkit' && process.platform === 'linux';
     // FIND-09 measured a 422px cart in the 390px iPhone viewport.
     const overflowPx = await checkoutPage.assertNoHorizontalOverflow(linuxWebKit ? 32 : 0);
@@ -42,13 +52,5 @@ test.describe('Mobile Money Path & Layout Hygiene @blocker-conversion', () => {
         expect(overflowPx, `Linux WebKit checkout overflow measured ${overflowPx}px`).toBe(0);
       });
     }
-
-    await checkoutPage.expectRowCount(1);
-    await checkoutPage.expectLineItem(product.name, {
-      quantity: 1,
-      unitPriceCents: expectedCents,
-      lineTotalCents: expectedCents,
-    });
-    await checkoutPage.expectCartTotal(expectedCents, `Mobile cart total for ${product.name}`);
   });
 });

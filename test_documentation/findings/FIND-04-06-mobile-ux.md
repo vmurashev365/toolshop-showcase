@@ -5,11 +5,27 @@
 
 ## Observations
 
-| ID | Area | Observed at `390×844` | Automation guardrail |
-| --- | --- | --- | --- |
-| **FIND-04** | Header cart visibility | After adding `Combination Pliers` to cart, `nav-cart` and its badge (`1`) are hidden inside the collapsed Bootstrap hamburger menu (`navCartVisibleWhenCollapsed: false`). A shopper gets no persistent cart badge in the top bar. | `HeaderNav.ensureNavExpanded()` ([`src/components/HeaderNav.ts`](../../src/components/HeaderNav.ts)) |
-| **FIND-05** | Mobile CTA & floating widget | On Product Detail, `Add to cart` renders below the fold at `y = 1120px` (viewport height `844px`). On Catalog, the bottom-left floating feed widget overlaps the first product title (`Combination Pliers`). | `scrollIntoViewIfNeeded()` in `ProductDetailsPage.addToCart()`, overflow check in `TC-MOB-001` |
-| **FIND-06** | Duplicate `data-test="filters"` | Two DOM nodes carry `data-test="filters"`: the mobile `<button>` toggle and the `<div id="filters">` panel. Unscoped `getByTestId('filters')` fails Playwright strict mode. | Explicitly scoped `mobileToggleButton` and `container` in [`src/components/CatalogFilters.ts`](../../src/components/CatalogFilters.ts) |
+| ID | Severity | Area | Observed at `390×844` | Automation guardrail |
+| --- | --- | --- | --- | --- |
+| **FIND-04** | Medium | Header cart visibility | After adding `Combination Pliers` to cart, `nav-cart` and its badge (`1`) are hidden inside the collapsed Bootstrap hamburger menu (`navCartVisibleWhenCollapsed: false`). A shopper gets no persistent cart badge in the top bar. | `HeaderNav.ensureNavExpanded()` ([`src/components/HeaderNav.ts`](../../src/components/HeaderNav.ts)) |
+| **FIND-05** | Low | Mobile CTA & floating widget | On Product Detail, `Add to cart` renders below the fold at `y = 1120px` (viewport height `844px`). On Catalog, the bottom-left floating feed widget overlaps the first product title (`Combination Pliers`). | `scrollIntoViewIfNeeded()` in `ProductDetailsPage.addToCart()`, overflow check in `TC-MOB-001` |
+| **FIND-06** | Low | Duplicate `data-test="filters"` | Two DOM nodes carry `data-test="filters"`: the mobile `<button>` toggle and the `<div id="filters">` panel. Unscoped `getByTestId('filters')` fails Playwright strict mode. | Explicitly scoped `mobileToggleButton` and `container` in [`src/components/CatalogFilters.ts`](../../src/components/CatalogFilters.ts) |
+
+Severity follows the [scale in the test strategy](../01-test-strategy.md#6-severity-scale).
+
+**Business impact:**
+
+- **FIND-04:** after adding an item, mobile shoppers see no cart count in the top bar, so it is harder to confirm the add and to find the way to checkout.
+- **FIND-05:** shoppers must scroll to reach `Add to cart`, and on Catalog the floating widget hides the first product title.
+- **FIND-06:** no shopper impact. Ambiguous test hooks make UI automation slower to write and easier to break.
+
+## Reproduce
+
+Open the storefront (`http://localhost:4200` on the isolated stack) in browser developer tools with a `390×844` touch device.
+
+1. **FIND-04:** open any in-stock product, select `Add to cart`, and look at the top bar. The cart badge appears only after you open the hamburger menu.
+2. **FIND-05:** on Product Detail, `Add to cart` is below the first screen. On Catalog, the widget in the bottom-left corner covers the first product title.
+3. **FIND-06:** on Catalog, run `document.querySelectorAll('[data-test="filters"]').length` in the console. It returns `2`.
 
 ### Visual evidence (`390×844`)
 
@@ -19,6 +35,10 @@
   ![Mobile catalog with expanded hamburger menu showing cart icon and badge 1](../evidence/find-04-mobile-header-expanded.png)
 
 ### WebKit cart overflow (`FIND-09`, `TC-MOB-001`)
+
+**Severity:** Low. It is seen only in Playwright's Linux WebKit build, and real iOS Safari has not been checked.  
+**Business impact:** on that engine the remove control in the cart is partly cut off.  
+**Reproduce:** run `npm run test:mobile` on Linux. The `mobile-webkit` result carries a `known-discrepancy` annotation with the measured overflow.
 
 On Linux WebKit (Playwright 1.65.1, iPhone 14 `390px` viewport) against pinned Sprint 5 revision `ae7caecb811dd8952c09d997e69be7cb946ecd44`, `/checkout` step 1 (Cart) overflows horizontally to `422px` (`32px` beyond the viewport), clipping the rightmost remove control. Mobile Chromium (`Pixel 7`) and Windows WebKit pass the same path with `0px` overflow.
 

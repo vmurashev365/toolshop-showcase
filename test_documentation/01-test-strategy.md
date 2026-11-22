@@ -72,3 +72,41 @@ Instead of forcing every check into Gherkin, one TypeScript codebase splits work
 | `test:bdd` | Cucumber + Chromium · isolated Docker SUT | Push / PR / manual | Block release — discount or checkout continuity broken |
 | `test:mobile` | `@playwright/test` · iPhone 14 WebKit & Pixel 7 Chromium · isolated Docker SUT | Push / PR / manual | Block release — mobile buyer funnel broken |
 | `test:ux` | `@playwright/test` · Chromium · isolated Docker SUT | Push / PR / manual | Triage before release — new WCAG 2.1 AA violation, i18n regression, or failed fault control |
+
+---
+
+## 6. Severity Scale
+
+Findings are rated as if Toolshop were a production store. Toolshop is a training app, so some behaviors may be intentional upstream.
+
+| Severity | Meaning |
+| :--- | :--- |
+| **Critical** | Unauthorized change of prices, orders, or customer data, or direct financial loss, with no special conditions |
+| **High** | Revenue or margin loss, or a broken business rule, under realistic shopping conditions |
+| **Medium** | Friction or compliance risk on a core buyer flow; a workaround exists |
+| **Low** | Cosmetic, limited to an unusual environment, or affecting only maintainability |
+
+---
+
+## 7. Risk → Test Traceability
+
+| Risk | Test | Suite (project) | Finding |
+| :--- | :--- | :--- | :--- |
+| Invalid cart quantities (`0`, negative, fractional) | `TC-API-001` | `test:api` (`api-margin-security`) | — |
+| Client-supplied price or discount accepted | `TC-API-002` | `test:api` (`api-margin-security`) | — |
+| Cent rounding drift in percentage discounts | `TC-API-003` | `test:api` (`api-margin-security`) | — |
+| Cross-user data access (BOLA/IDOR) | `TC-SEC-001` | `test:api` (`api-margin-security`) | — |
+| Unauthenticated invoice creation | `TC-SEC-002` | `test:api` (`api-margin-security`) | — |
+| Payment details accepted without validation | `TC-SEC-004` | `test:api` (`api-margin-security`) | — |
+| Catalog updates without authentication | `TC-SEC-003` (watch) | `test:discrepancies:api` (`known-discrepancies-api`) | [FIND-01](findings/FIND-01-product-update-rbac.md) · Critical |
+| Out-of-stock items ordered through the API | `TC-API-004` (watch) | `test:discrepancies:api` (`known-discrepancies-api`) | [FIND-02](findings/FIND-02-out-of-stock-bypass.md) · High |
+| Ineligible or stacked discounts | `TC-API-005` (watch) | `test:discrepancies:api` (`known-discrepancies-api`) | [FIND-03](findings/FIND-03-discount-stacking.md) · High |
+| Catalog price differs from cart; cart lost at sign-in | `TC-BDD-001` | `test:bdd` | — |
+| 15% retail+rental combination discount not applied | `TC-BDD-002` | `test:bdd` | — |
+| Combination discount kept after the rental is removed or the page reloads | `TC-BDD-003` | `test:bdd` | — |
+| Mobile buyer cannot browse, add to cart, and reconcile the total | `TC-MOB-001` | `test:mobile` (`mobile-webkit`, `mobile-chromium`) | [FIND-04, FIND-05, FIND-09](findings/FIND-04-06-mobile-ux.md) · Medium / Low |
+| Ambiguous test hooks break automation | Page-object guardrail (`CatalogFilters`); no public test uses the filters yet | — | [FIND-06](findings/FIND-04-06-mobile-ux.md) · Low |
+| New critical/serious accessibility violation | `TC-A11Y-001` (ratchet) | `test:ux` (`ux-guards`) | [FIND-08](findings/FIND-07-08-a11y-i18n.md) · Medium |
+| `DE` locale breaks layout or price format | `TC-I18N-001` | `test:ux` (`ux-guards`) | [FIND-07](findings/FIND-07-08-a11y-i18n.md) · Low |
+| Price assertions miss a tampered amount | `TC-RES-001` (fault injection) | `test:ux` (`ux-guards`) | — |
+| Payment outage loses the cart or creates an invoice | `TC-RES-002` (fault injection) | `test:ux` (`ux-guards`) | — |

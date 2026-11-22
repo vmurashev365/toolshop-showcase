@@ -18,12 +18,18 @@ export class BasePage {
 
   /**
    * Returns the measured overflow in CSS pixels after checking the viewport limit.
+   * Measures once web fonts (including icon fonts) have loaded and a frame has rendered, so a
+   * reading taken mid-layout does not under-report the overflow.
    */
   async assertNoHorizontalOverflow(maxOverflowPx = 0): Promise<number> {
-    const metrics = await this.page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      innerWidth: window.innerWidth,
-    }));
+    const metrics = await this.page.evaluate(async () => {
+      await document.fonts.ready;
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      return {
+        scrollWidth: document.documentElement.scrollWidth,
+        innerWidth: window.innerWidth,
+      };
+    });
     const overflowPx = Math.max(0, metrics.scrollWidth - metrics.innerWidth);
     expect(
       overflowPx,

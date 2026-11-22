@@ -196,9 +196,11 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
 
   await t.test('passing BDD opens once and respects its output override', async () => {
     const destination = join(fixture, 'custom BDD output');
+    put('custom BDD output/screenshots/earlier failure.png', 'stale evidence');
     const result = npmRun('test:bdd', ['--tags', '@smoke'], { REPORT_DIR: destination });
     assert.equal(result.status, 0, result.output);
     assert.match(result.output, /1 scenario \(1 passed\)/);
+    assert.ok(!existsSync(join(destination, 'screenshots', 'earlier failure.png')), 'stale BDD evidence was removed');
     assert.equal(opens().length, 1);
     assert.match(opens()[0].url, /\/bdd\/cucumber-report\.html$/);
     assert.match(await html(opens()[0].url), /<title>Cucumber<\/title>/);
@@ -221,6 +223,8 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
 
   await t.test('failing Playwright opens one current report with attachments over HTTP', async () => {
     const output = join(fixture, 'custom Playwright output');
+    put('custom Playwright output/data/earlier.txt', 'stale attachment');
+    put('custom Playwright results/artifacts/earlier test/trace.zip', 'stale trace');
     const result = npmRun('test:mobile', ['--trace=on'], {
       FIXTURE_PW_FAIL: 'mobile-webkit',
       PLAYWRIGHT_HTML_OUTPUT_DIR: output,
@@ -235,6 +239,11 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
     const [run] = completedRuns();
     assert.ok(existsSync(join(output, 'index.html')));
     assert.ok(existsSync(join(fixture, 'custom Playwright results', 'results.json')));
+    assert.ok(!existsSync(join(output, 'data', 'earlier.txt')), 'stale HTML attachment was removed');
+    assert.ok(
+      !existsSync(join(fixture, 'custom Playwright results', 'artifacts', 'earlier test')),
+      'stale Playwright artifacts were removed',
+    );
     const data = join(dirname(join(run.path, run.entry)), 'data');
     const attachment = readdirSync(data).find((file) => file.endsWith('.txt'));
     const trace = readdirSync(data).find((file) => file.endsWith('.zip'));
@@ -323,5 +332,15 @@ test('normal npm scripts open only HTML from the completed invocation', { timeou
     assert.match(index, /Known API discrepancies .* Failed .*pw-discrepancies\/html\/index\.html/);
     assert.match(index, /Cucumber business scenarios .* Did not run/);
     assert.doesNotMatch(index, /href="(?:bdd|pw-mobile|pw-ux)\//);
+  });
+
+  await t.test('an output override that holds the run history leaves the history intact', () => {
+    const before = completedRuns().map((run) => run.path);
+    const result = npmRun('test:bdd', ['--tags', '@smoke'], { REPORT_DIR: 'reports' });
+    assert.equal(result.status, 0, result.output);
+    const after = completedRuns().map((run) => run.path);
+    assert.equal(after.length, before.length + 1);
+    for (const path of before) assert.ok(after.includes(path), path);
+    assert.ok(existsSync(join(fixture, 'reports', 'cucumber-report.html')));
   });
 });

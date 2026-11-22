@@ -42,7 +42,7 @@ When switching to a newer pinned revision in `scripts/toolshop-revision.txt`, cl
 
 | Command | What it runs |
 | --- | --- |
-| `npm run check:static` | Prettier (`format:check`), ESLint, native TypeScript 7 (`typecheck`), 7 unit tests (`test:unit`), Cucumber dry-run (`bdd:dry`), Playwright discovery (`pw:list`), and report-opening integration test (`test:report-opening`) |
+| `npm run check:static` | Prettier (`format:check`), ESLint, native TypeScript 7 (`typecheck`), 11 unit tests (`test:unit`), Cucumber dry-run (`bdd:dry`), Playwright discovery (`pw:list`), and report-opening integration test (`test:report-opening`) |
 | `npm run format:write` | Formats JS, TS, JSON, and YAML files with Prettier |
 | `npm run check:local` | Verifies local UI (`4200`) and seeded catalog API (`8091`) |
 | `npm run test:pr-gate` | Runs `check:static`, `check:local`, then API, Known Discrepancies, BDD, Mobile, and UX suites in order, stopping at the first failure |
@@ -75,6 +75,8 @@ set +a
 On a desktop, local test commands save isolated runs under `reports/runs/<uuid>/` and open the HTML report automatically when the run finishes (including on test failures). `test:pr-gate` generates a combined index linking each completed suite and marking any skipped suites. `npm run report:open` serves the latest completed run over a loopback HTTP server (supporting HTTP `Range` requests for Playwright Trace Viewer) without re-running tests.
 
 In CI, reports write to deterministic paths under `reports/` (`pw-api`, `pw-discrepancies`, `bdd`, `pw-mobile`, `pw-ux`), and Cucumber dry-runs write to `reports/bdd-dry-run/`.
+
+Each suite writes an HTML report for people and a JSON file (`results.json`, `cucumber-report.json`) that the GitHub Pages summary reads. In the Cucumber report, key steps log the products, quantities and expected amounts they check, so a passing scenario still shows what was verified. A failed scenario adds, under its `After` hook, a full-page screenshot, a link to the Playwright trace, and `api-exchanges.json` with the scenario's last 10 API calls. Passwords, tokens and JWT-shaped values are redacted because the report is published.
 
 ## CI workflows & public report
 

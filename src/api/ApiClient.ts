@@ -7,11 +7,26 @@ export interface ApiResult<T = unknown> {
   body: T;
 }
 
+/** One request and its parsed response, reported to the optional observer. */
+export interface ApiExchange {
+  method: string;
+  url: string;
+  requestBody?: unknown;
+  status: number;
+  responseBody: unknown;
+}
+
 export class ApiClient {
   constructor(
     public readonly request: APIRequestContext,
     public readonly baseUrl: string,
+    private readonly onExchange?: (exchange: ApiExchange) => void,
   ) {}
+
+  private record<T>(method: string, url: string, requestBody: unknown, result: ApiResult<T>): ApiResult<T> {
+    this.onExchange?.({ method, url, requestBody, status: result.status, responseBody: result.body });
+    return result;
+  }
 
   private url(path: string): string {
     const cleanBase = this.baseUrl.replace(/\/$/, '');
@@ -43,28 +58,32 @@ export class ApiClient {
   }
 
   async get<T = unknown>(path: string, token?: string): Promise<ApiResult<T>> {
-    const res = await this.request.get(this.url(path), { headers: this.headers(token) });
-    return this.parse<T>(res);
+    const url = this.url(path);
+    const res = await this.request.get(url, { headers: this.headers(token) });
+    return this.record('GET', url, undefined, await this.parse<T>(res));
   }
 
   async post<T = unknown>(path: string, data?: unknown, token?: string): Promise<ApiResult<T>> {
-    const res = await this.request.post(this.url(path), {
+    const url = this.url(path);
+    const res = await this.request.post(url, {
       headers: this.headers(token, data !== undefined),
       data,
     });
-    return this.parse<T>(res);
+    return this.record('POST', url, data, await this.parse<T>(res));
   }
 
   async put<T = unknown>(path: string, data?: unknown, token?: string): Promise<ApiResult<T>> {
-    const res = await this.request.put(this.url(path), {
+    const url = this.url(path);
+    const res = await this.request.put(url, {
       headers: this.headers(token, data !== undefined),
       data,
     });
-    return this.parse<T>(res);
+    return this.record('PUT', url, data, await this.parse<T>(res));
   }
 
   async delete<T = unknown>(path: string, token?: string): Promise<ApiResult<T>> {
-    const res = await this.request.delete(this.url(path), { headers: this.headers(token) });
-    return this.parse<T>(res);
+    const url = this.url(path);
+    const res = await this.request.delete(url, { headers: this.headers(token) });
+    return this.record('DELETE', url, undefined, await this.parse<T>(res));
   }
 }
